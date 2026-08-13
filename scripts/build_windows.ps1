@@ -237,7 +237,8 @@ $provenance | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $releaseRoot 
 $hashLines = Get-ChildItem -LiteralPath $releaseRoot -Recurse -File |
     Sort-Object FullName |
     ForEach-Object {
-        $relative = [System.IO.Path]::GetRelativePath($releaseRoot, $_.FullName).Replace("\", "/")
+        # System.IO.Path.GetRelativePath is unavailable in Windows PowerShell 5.1.
+        $relative = $_.FullName.Substring($releaseRoot.TrimEnd("\").Length + 1).Replace("\", "/")
         $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
         "$hash  $relative"
     }
