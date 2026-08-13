@@ -1,0 +1,76 @@
+name: Verify and publish portable release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing draft release tag containing both locally built ZIPs
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    steps:
+      - name: Require main
+        shell: pwsh
+        run: |
+          if ("${{ github.ref }}" -ne "refs/heads/main") {
+            throw "Run this workflow from main"
+          }
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate draft target and assets
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          $release = gh release view $env:RELEASE_TAG --json isDraft,tagName,targetCommitish,assets | ConvertFrom-Json
+          if (-not $release.isDraft) { throw "Release must still be a draft" }
+          $expectedAssets = @(
+            "Reforge-Pixels-windows-x64.zip",
+            "Reforge-Pixels-windows-x64-corresponding-source.zip"
+          )
+          $assetNames = @($release.assets | ForEach-Object { $_.name })
+          foreach ($name in $expectedAssets) {
+            if ($name -notin $assetNames) { throw "Draft release is missing required asset: $name" }
+          }
+          $mainCommit = (git rev-parse HEAD).Trim()
+          if ($release.targetCommitish -ne "main" -and $release.targetCommitish -ne $mainCommit) {
+            throw "Draft release must target main or the current main commit"
+          }
+      - name: Download and extract paired assets
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          New-Item -ItemType Directory -Force -Path ci-release/assets,ci-release/binary,ci-release/source | Out-Null
+          gh release download $env:RELEASE_TAG `
+            --dir ci-release/assets `
+            --pattern "Reforge-Pixels-windows-x64.zip" `
+            --pattern "Reforge-Pixels-windows-x64-corresponding-source.zip"
+          if ($LASTEXITCODE -ne 0) { throw "Unable to download draft release assets" }
+          Expand-Archive ci-release/assets/Reforge-Pixels-windows-x64.zip -DestinationPath ci-release/binary
+          Expand-Archive ci-release/assets/Reforge-Pixels-windows-x64-corresponding-source.zip -DestinationPath ci-release/source
+      - name: Verify binary integrity and release compliance
+        shell: pwsh
+        run: |
+          ./scripts/verify_windows_release.ps1 -ReleaseDirectory ci-release/binary/Reforge-Pixels-windows-x64
+          ./scripts/verify_release_compliance.ps1 `
+            -ReleaseDirectory ci-release/binary/Reforge-Pixels-windows-x64 `
+            -CorrespondingSourceDirectory ci-release/source `
+            -ExpectedCommit "${{ github.sha }}"
+      - name: Publish verified draft
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          gh release edit $env:RELEASE_TAG --draft=false
+          if ($LASTEXITCODE -ne 0) { throw "Unable to publish verified draft release" }

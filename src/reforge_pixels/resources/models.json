@@ -1,0 +1,215 @@
+{
+  "schema_version": 3,
+  "models": [
+    {
+      "id": "waifu2x-photo",
+      "display_name": "Photo Fast 2x — Waifu2x Upconv_7 Photo (General)",
+      "engine_id": "waifu2x",
+      "engine_name": "upconv_7_photo",
+      "model_directory": "models-upconv_7_photo",
+      "recommendation": "General",
+      "default_for": ["General"],
+      "media_types": ["image", "video"],
+      "description": "Fast native-2x photographic upscaling with selectable noise reduction.",
+      "native_scales": [2],
+      "scale_recipes": [
+        {"final_scale":2,"inference_scale":2,"passes":1,"mode":"native"},
+        {"final_scale":3,"inference_scale":2,"passes":2,"mode":"repeated_downscale"},
+        {"final_scale":4,"inference_scale":2,"passes":2,"mode":"repeated"}
+      ],
+      "noise_levels_by_scale": {"2": [-1, 0, 1, 2, 3]},
+      "noise_options": [
+        {"value": -1, "label": "Off"}, {"value": 0, "label": "Low"},
+        {"value": 1, "label": "Medium"}, {"value": 2, "label": "High"},
+        {"value": 3, "label": "Maximum"}
+      ],
+      "supports_tta": true,
+      "speed_class": "Fast",
+      "model_files": [
+        {"name":"scale2.0x_model.param","sha256":"66da0db6342450b9c9c5dd1a05d20245bec4dca7878b8b57ca7bcfc5be1807c9"},
+        {"name":"scale2.0x_model.bin","sha256":"25a2bb25b29e43e63179aac216cd87690791243a436328506d4ef9fca88ee962"},
+        {"name":"noise0_scale2.0x_model.param","sha256":"66da0db6342450b9c9c5dd1a05d20245bec4dca7878b8b57ca7bcfc5be1807c9"},
+        {"name":"noise0_scale2.0x_model.bin","sha256":"fbfc8d57e4333748c9c6db2ec4d5454c98cd1c6aa53289f2989c3bdb4e84b673"},
+        {"name":"noise1_scale2.0x_model.param","sha256":"66da0db6342450b9c9c5dd1a05d20245bec4dca7878b8b57ca7bcfc5be1807c9"},
+        {"name":"noise1_scale2.0x_model.bin","sha256":"9f8ce2c4df1ed862a7441e3b49ad965b8e34aaa6d87c1cad52a1768210fdfee6"},
+        {"name":"noise2_scale2.0x_model.param","sha256":"66da0db6342450b9c9c5dd1a05d20245bec4dca7878b8b57ca7bcfc5be1807c9"},
+        {"name":"noise2_scale2.0x_model.bin","sha256":"432ca8f62ffc4873794a399ded70b17af23aa870b25e5ddba76f029b7ce14c2b"},
+        {"name":"noise3_scale2.0x_model.param","sha256":"66da0db6342450b9c9c5dd1a05d20245bec4dca7878b8b57ca7bcfc5be1807c9"},
+        {"name":"noise3_scale2.0x_model.bin","sha256":"a24379eb4e954005da1804223f428e67340e3f0037e4f7b9f568f0d0f20e9f20"}
+      ],
+      "status": "validated"
+    },
+    {
+      "id": "waifu2x-cunet",
+      "display_name": "Photo Restore / Quality 2x — Waifu2x Cunet (General)",
+      "engine_id": "waifu2x", "engine_name": "cunet", "model_directory": "models-cunet",
+      "recommendation": "General", "media_types": ["image", "video"],
+      "description": "Higher-quality Waifu2x restoration with native 1x denoise and native 2x upscaling.",
+      "native_scales": [1, 2],
+      "scale_recipes": [
+        {"final_scale":1,"inference_scale":1,"passes":1,"mode":"native"},
+        {"final_scale":2,"inference_scale":2,"passes":1,"mode":"native"},
+        {"final_scale":3,"inference_scale":2,"passes":2,"mode":"repeated_downscale"},
+        {"final_scale":4,"inference_scale":2,"passes":2,"mode":"repeated"}
+      ],
+      "noise_levels_by_scale": {"1": [0, 1, 2, 3], "2": [-1, 0, 1, 2, 3]},
+      "noise_options": [
+        {"value":-1,"label":"Off"}, {"value":0,"label":"Low"}, {"value":1,"label":"Medium"},
+        {"value":2,"label":"High"}, {"value":3,"label":"Maximum"}
+      ],
+      "supports_tta": true, "speed_class": "Quality",
+      "model_files": [
+        {"name":"noise0_model.bin","sha256":"b15c356a36bcbf6fb8c2f1404ca016fd917d4e45426bcf41f7a3867022fdd7b0"}, {"name":"noise0_model.param","sha256":"8fda717f004e75f02e4eaf9901bd37301fa51b1f5cd80d53a466a274406595d3"},
+        {"name":"noise1_model.bin","sha256":"3407cb87c2503cbd69f8a6703b31bc4949a72080a3e1b1e536dba8bdbfad934f"}, {"name":"noise1_model.param","sha256":"8fda717f004e75f02e4eaf9901bd37301fa51b1f5cd80d53a466a274406595d3"},
+        {"name":"noise2_model.bin","sha256":"b45d5febeb56166b7aff055cb0fbb87647dae528968f97d838dfd7ce0b7117f4"}, {"name":"noise2_model.param","sha256":"8fda717f004e75f02e4eaf9901bd37301fa51b1f5cd80d53a466a274406595d3"},
+        {"name":"noise3_model.bin","sha256":"cd3d2440673d28d7a20aa6428a2a79e1c5e733f21de0a66785958f98d6994926"}, {"name":"noise3_model.param","sha256":"8fda717f004e75f02e4eaf9901bd37301fa51b1f5cd80d53a466a274406595d3"},
+        {"name":"scale2.0x_model.bin","sha256":"d82ed30207fd07e1c16726a9ca838ce44e6e25a105b0278c7ca681516ee0e18e"}, {"name":"scale2.0x_model.param","sha256":"9b06073e039ca93d5bd79f6bb42016cd98d5bdefa0e9761df6b22b844c39965f"},
+        {"name":"noise0_scale2.0x_model.bin","sha256":"5329a9375c9cfb64a60a2903fd8ae6e2851d9b069556bf025dbab9d0216fb27c"}, {"name":"noise0_scale2.0x_model.param","sha256":"9b06073e039ca93d5bd79f6bb42016cd98d5bdefa0e9761df6b22b844c39965f"},
+        {"name":"noise1_scale2.0x_model.bin","sha256":"862c0e40f3df956ff57bd4d168c85dea5d375b614077fdddd3ac8cfdb9a686da"}, {"name":"noise1_scale2.0x_model.param","sha256":"9b06073e039ca93d5bd79f6bb42016cd98d5bdefa0e9761df6b22b844c39965f"},
+        {"name":"noise2_scale2.0x_model.bin","sha256":"5c836e6ae022636cdd5590fbb66dbca2a5fc20bbf8e628884c3612ef72d51858"}, {"name":"noise2_scale2.0x_model.param","sha256":"9b06073e039ca93d5bd79f6bb42016cd98d5bdefa0e9761df6b22b844c39965f"},
+        {"name":"noise3_scale2.0x_model.bin","sha256":"f42c18610fecb14a40f75cca9b9276a6889689d5937a4f75f0c2b21bde7e49ed"}, {"name":"noise3_scale2.0x_model.param","sha256":"9b06073e039ca93d5bd79f6bb42016cd98d5bdefa0e9761df6b22b844c39965f"}
+      ], "status": "validated"
+    },
+    {
+      "id": "waifu2x-anime-style",
+      "display_name": "Anime Fast 2x — Waifu2x Upconv_7 Anime Style (Anime)",
+      "engine_id": "waifu2x", "engine_name": "upconv_7_anime_style_art_rgb", "model_directory": "models-upconv_7_anime_style_art_rgb",
+      "recommendation": "Anime", "media_types": ["image", "video"],
+      "description": "Fast native-2x Waifu2x model tuned for anime-style artwork.",
+      "native_scales": [2],
+      "scale_recipes": [
+        {"final_scale":2,"inference_scale":2,"passes":1,"mode":"native"},
+        {"final_scale":3,"inference_scale":2,"passes":2,"mode":"repeated_downscale"},
+        {"final_scale":4,"inference_scale":2,"passes":2,"mode":"repeated"}
+      ],
+      "noise_levels_by_scale": {"2": [-1, 0, 1, 2, 3]},
+      "noise_options": [
+        {"value":-1,"label":"Off"}, {"value":0,"label":"Low"}, {"value":1,"label":"Medium"},
+        {"value":2,"label":"High"}, {"value":3,"label":"Maximum"}
+      ],
+      "supports_tta": true, "speed_class": "Fast",
+      "model_files": [
+        {"name":"scale2.0x_model.bin","sha256":"27d880903ff81390a3b4a900b67af3381c465279e34297546c9a58781855f7ef"}, {"name":"scale2.0x_model.param","sha256":"66da0db6342450b9c9c5dd1a05d20245bec4dca7878b8b57ca7bcfc5be1807c9"},
+        {"name":"noise0_scale2.0x_model.bin","sha256":"e1d2c4d91be98e72c0d48d08626cbe7d879aa2b80f740133dcc0d860eabb4189"}, {"name":"noise0_scale2.0x_model.param","sha256":"66da0db6342450b9c9c5dd1a05d20245bec4dca7878b8b57ca7bcfc5be1807c9"},
+        {"name":"noise1_scale2.0x_model.bin","sha256":"536fd7070b023463d30bd105f675acf301760dce539f2fb974bd06906045514f"}, {"name":"noise1_scale2.0x_model.param","sha256":"66da0db6342450b9c9c5dd1a05d20245bec4dca7878b8b57ca7bcfc5be1807c9"},
+        {"name":"noise2_scale2.0x_model.bin","sha256":"435f9082425c4520d3586757411ac409b1d67e428ed37ec571feb06f823e245e"}, {"name":"noise2_scale2.0x_model.param","sha256":"66da0db6342450b9c9c5dd1a05d20245bec4dca7878b8b57ca7bcfc5be1807c9"},
+        {"name":"noise3_scale2.0x_model.bin","sha256":"3e783a9117d4564fbd0cc376375b29d7eb05bd2e457f748898e82eefb1ace2f1"}, {"name":"noise3_scale2.0x_model.param","sha256":"66da0db6342450b9c9c5dd1a05d20245bec4dca7878b8b57ca7bcfc5be1807c9"}
+      ], "status": "validated"
+    },
+    {
+      "id": "general-quality-4x",
+      "display_name": "Photo Best Quality 4x — realesrgan-x4plus (General)",
+      "engine_id": "realesrgan", "engine_name": "realesrgan-x4plus", "model_directory": "models",
+      "recommendation": "General", "media_types": ["image", "video"],
+      "description": "Detailed native-4x restoration for photos, games, and mixed content.",
+      "native_scales": [4],
+      "scale_recipes": [
+        {"final_scale":2,"inference_scale":4,"passes":1,"mode":"downscale"},
+        {"final_scale":3,"inference_scale":4,"passes":1,"mode":"downscale"},
+        {"final_scale":4,"inference_scale":4,"passes":1,"mode":"native"}
+      ], "supports_tta": true, "speed_class": "Slow",
+      "model_files": [
+        {"name":"realesrgan-x4plus.param","sha256":"35330ececcea33b6c397a72548e788d5d53becee4734c50b7fada36e89f10a86"},
+        {"name":"realesrgan-x4plus.bin","sha256":"713ee713b0353afaa27976f0563a64a5043bd70b9bd8936c2e26e25ebcdbcddf"}
+      ], "status": "validated"
+    },
+    {
+      "id": "anime-image-4x",
+      "display_name": "Anime Illustration 4x — realesrgan-x4plus-anime (Anime)",
+      "engine_id": "realesrgan", "engine_name": "realesrgan-x4plus-anime", "model_directory": "models",
+      "recommendation": "Anime", "media_types": ["image"],
+      "description": "Native-4x clean edges and line work for anime and illustration.",
+      "native_scales": [4],
+      "scale_recipes": [
+        {"final_scale":2,"inference_scale":4,"passes":1,"mode":"downscale"},
+        {"final_scale":3,"inference_scale":4,"passes":1,"mode":"downscale"},
+        {"final_scale":4,"inference_scale":4,"passes":1,"mode":"native"}
+      ], "supports_tta": true, "speed_class": "Standard",
+      "model_files": [
+        {"name":"realesrgan-x4plus-anime.param","sha256":"2b8fb6e0ae4d2d85704ca08c119a2f5ea40add4f2ecd512eb7f4cd44b6127ed4"},
+        {"name":"realesrgan-x4plus-anime.bin","sha256":"fe01c269cfd10cdef8e018ab66ebe750cf79c7af4d1f9c16c737e1295229bacc"}
+      ], "status": "validated"
+    },
+    {
+      "id": "anime-video",
+      "display_name": "Anime Video 2x/3x/4x — realesr-animevideov3 (Anime)",
+      "engine_id": "realesrgan", "engine_name": "realesr-animevideov3", "model_directory": "models",
+      "recommendation": "Anime", "media_types": ["video"],
+      "description": "Compact animation model with separate native 2x, 3x, and 4x assets.",
+      "native_scales": [2, 3, 4],
+      "scale_recipes": [
+        {"final_scale":2,"inference_scale":2,"passes":1,"mode":"native"},
+        {"final_scale":3,"inference_scale":3,"passes":1,"mode":"native"},
+        {"final_scale":4,"inference_scale":4,"passes":1,"mode":"native"}
+      ], "supports_tta": true, "speed_class": "Fast",
+      "model_files": [
+        {"name":"realesr-animevideov3-x2.param","sha256":"b88ff4f00ebf019a7fdac17fdd45a7fd3665d37509efc5baf2e4da2e24420a04"},
+        {"name":"realesr-animevideov3-x2.bin","sha256":"548a36f9c3f4ab8da56cd3b13badf23968bee207b396dad14d04b830e5f2ab2d"},
+        {"name":"realesr-animevideov3-x3.param","sha256":"d1a5755008791d09b57e3425fc9dd0bd26b00fdf79c606210bc0e693f8230881"},
+        {"name":"realesr-animevideov3-x3.bin","sha256":"548a36f9c3f4ab8da56cd3b13badf23968bee207b396dad14d04b830e5f2ab2d"},
+        {"name":"realesr-animevideov3-x4.param","sha256":"850a248e7c14c27e5bd8cf7265113a9441036a7db63963bb8aa5169d788a435e"},
+        {"name":"realesr-animevideov3-x4.bin","sha256":"548a36f9c3f4ab8da56cd3b13badf23968bee207b396dad14d04b830e5f2ab2d"}
+      ], "status": "validated"
+    },
+    {
+      "id": "realcugan-se",
+      "display_name": "Anime Clean 2x/3x/4x — Real-CUGAN SE (Anime)",
+      "engine_id": "realcugan", "engine_name": "realcugan-se", "model_directory": "models-se",
+      "recommendation": "Anime", "media_types": ["image", "video"],
+      "description": "Scale-specific anime restoration with native conservative and denoise variants.",
+      "native_scales": [2, 3, 4],
+      "scale_recipes": [
+        {"final_scale":2,"inference_scale":2,"passes":1,"mode":"native"},
+        {"final_scale":3,"inference_scale":3,"passes":1,"mode":"native"},
+        {"final_scale":4,"inference_scale":4,"passes":1,"mode":"native"}
+      ],
+      "noise_levels_by_scale": {"2": [-1, 0, 1, 2, 3], "3": [-1, 0, 3], "4": [-1, 0, 3]},
+      "noise_options": [
+        {"value": -1, "label": "Conservative"}, {"value": 0, "label": "Off"},
+        {"value": 1, "label": "Low"}, {"value": 2, "label": "Medium"},
+        {"value": 3, "label": "High"}
+      ],
+      "supports_tta": true, "speed_class": "Standard",
+      "model_files": [
+        {"name":"up2x-conservative.param","sha256":"91efac7489bf249f092faa3764e3a3d1d31ef290051e39f2afd2138c98ccce30"}, {"name":"up2x-conservative.bin","sha256":"91c72c136e7ff8556323d4449c5ceeff22d9829bf8463a01137cadb8d59b84a0"},
+        {"name":"up2x-no-denoise.param","sha256":"91efac7489bf249f092faa3764e3a3d1d31ef290051e39f2afd2138c98ccce30"}, {"name":"up2x-no-denoise.bin","sha256":"7f135a712830b16678cb8247b9517308c5f3858fca9b10e1c3ad5ef6e261de0c"},
+        {"name":"up2x-denoise1x.param","sha256":"91efac7489bf249f092faa3764e3a3d1d31ef290051e39f2afd2138c98ccce30"}, {"name":"up2x-denoise1x.bin","sha256":"09373c4fddfd2a57fb4af5e516eba1b4c9caa132fd52ffd01bcaefee543bf7f6"},
+        {"name":"up2x-denoise2x.param","sha256":"91efac7489bf249f092faa3764e3a3d1d31ef290051e39f2afd2138c98ccce30"}, {"name":"up2x-denoise2x.bin","sha256":"47427a52badebfbd7bb6db97196a2844c553f7f2bb93c9527b26347bea0430e7"},
+        {"name":"up2x-denoise3x.param","sha256":"91efac7489bf249f092faa3764e3a3d1d31ef290051e39f2afd2138c98ccce30"}, {"name":"up2x-denoise3x.bin","sha256":"610ebae63f388fe6f39615cc5f4eaeb038d5aa6ba8b299ba3b989f7f7a1a280a"},
+        {"name":"up3x-conservative.param","sha256":"9e71ba0bce194f6a95422140c8caa25accbbfd9ec84a0cc08f7f4ec1e615a5a8"}, {"name":"up3x-conservative.bin","sha256":"8321c450efedcd94192196b03ddec19c2a023a5637df7208d49e9e0461560dff"},
+        {"name":"up3x-no-denoise.param","sha256":"9e71ba0bce194f6a95422140c8caa25accbbfd9ec84a0cc08f7f4ec1e615a5a8"}, {"name":"up3x-no-denoise.bin","sha256":"e22e8e647b20eb0067cc46b9cf83bcb0893b2e77e83beaee0bedecf4c735f716"},
+        {"name":"up3x-denoise3x.param","sha256":"9e71ba0bce194f6a95422140c8caa25accbbfd9ec84a0cc08f7f4ec1e615a5a8"}, {"name":"up3x-denoise3x.bin","sha256":"fdb269034f7d6bf59be8fe1c03c43a75671af464e045a13870b24b649d64f1f6"},
+        {"name":"up4x-conservative.param","sha256":"63e8f6a5a57acb4b7678fd928612538ae7208c836223becdb66ffb82bd2aab9b"}, {"name":"up4x-conservative.bin","sha256":"1ffde324bf3444adade3e70ff4ff4eac7a4bfbf4c01b5aab4563a89e5cec16da"},
+        {"name":"up4x-no-denoise.param","sha256":"63e8f6a5a57acb4b7678fd928612538ae7208c836223becdb66ffb82bd2aab9b"}, {"name":"up4x-no-denoise.bin","sha256":"aa3d9bda3f46bb48f709d874ccaf67877e94a2fd6cedca7dac5ccb3bf714e066"},
+        {"name":"up4x-denoise3x.param","sha256":"63e8f6a5a57acb4b7678fd928612538ae7208c836223becdb66ffb82bd2aab9b"}, {"name":"up4x-denoise3x.bin","sha256":"1fe05d6066901d354bbbc0cb53fba6588ef7637e1ec9c3bce7546900484d0b35"}
+      ], "status": "validated"
+    },
+    {
+      "id": "realcugan-pro",
+      "display_name": "Anime Pro 2x/3x — Real-CUGAN Pro (Anime)",
+      "engine_id": "realcugan", "engine_name": "realcugan-pro", "model_directory": "models-pro",
+      "recommendation": "Anime", "media_types": ["image", "video"],
+      "default_for": ["Anime"],
+      "description": "Higher-detail Real-CUGAN candidate with native 2x and 3x assets.",
+      "native_scales": [2, 3],
+      "scale_recipes": [
+        {"final_scale":2,"inference_scale":2,"passes":1,"mode":"native"},
+        {"final_scale":3,"inference_scale":3,"passes":1,"mode":"native"},
+        {"final_scale":4,"inference_scale":2,"passes":2,"mode":"repeated"}
+      ], "noise_levels_by_scale": {"2": [-1, 0, 3], "3": [-1, 0, 3]},
+      "noise_options": [
+        {"value": -1, "label": "Conservative"}, {"value": 0, "label": "Off"},
+        {"value": 3, "label": "High"}
+      ],
+      "supports_tta": true, "speed_class": "Quality",
+      "model_files": [
+        {"name":"up2x-conservative.param","sha256":"98bc044434b31a388627f66fcb816ba8213923a4c69eb346ba67e62ec21f6f4d"}, {"name":"up2x-conservative.bin","sha256":"087b4f1836a084f432752503c9e12246a4f8446cfa2c5c919fcf490961b5b4f1"},
+        {"name":"up2x-no-denoise.param","sha256":"98bc044434b31a388627f66fcb816ba8213923a4c69eb346ba67e62ec21f6f4d"}, {"name":"up2x-no-denoise.bin","sha256":"d99abb3266d08b04aadd6008b8855eee06b78055f202c7b93fbf34ab8365cbc9"},
+        {"name":"up2x-denoise3x.param","sha256":"98bc044434b31a388627f66fcb816ba8213923a4c69eb346ba67e62ec21f6f4d"}, {"name":"up2x-denoise3x.bin","sha256":"815fe3bf3f14f010f4f7a26ab6d2c47330d80c789720639088ccfaf013cec651"},
+        {"name":"up3x-conservative.param","sha256":"6cea6ddc870dd6d16773ee78bdf32bc1bfc55eec2f8fa57d1d33a33ab3ffb6f6"}, {"name":"up3x-conservative.bin","sha256":"bda924012738fd82b13e5ef23feb051976be2803a0aba5651b7c4f99b5713436"},
+        {"name":"up3x-no-denoise.param","sha256":"6cea6ddc870dd6d16773ee78bdf32bc1bfc55eec2f8fa57d1d33a33ab3ffb6f6"}, {"name":"up3x-no-denoise.bin","sha256":"2f767e54d25fe4a9a8927783ecff36151504299c833cde85445b1986bbb44800"},
+        {"name":"up3x-denoise3x.param","sha256":"6cea6ddc870dd6d16773ee78bdf32bc1bfc55eec2f8fa57d1d33a33ab3ffb6f6"}, {"name":"up3x-denoise3x.bin","sha256":"01a32b0fbba96a60e7e83fbe351a1231f40a43fa9247f9695d7e0633d2f3a938"}
+      ], "status": "validated"
+    }
+  ]
+}
