@@ -35,15 +35,16 @@ The portable release includes the official executable and the SE and Pro native-
 
 ## FFmpeg
 
-- Component: FFmpeg 7.1.1 full Windows build
+- Component: self-built FFmpeg 7.1.1 static Windows executables
 - Upstream: <https://ffmpeg.org/>
-- Binary distributor: <https://www.gyan.dev/ffmpeg/builds/>
-- Effective license: GPL, because the selected build configuration contains `--enable-gpl` and GPL components
-- `ffmpeg.exe` SHA-256: `b1383f5d07470d503edecdaee4bddc5891e986e916a698299b357f79cfe445fd`
-- `ffprobe.exe` SHA-256: `012bddded3cbc5204055210d7ff4f0b3f7521bca441a694939856d01909f5756`
+- Static components: x264 commit `b35605ace3ddf7c1a5d67a2eb553f034aef41d55`, Opus 1.5.2, zimg 3.0.5, zlib 1.3.2, and nv-codec-headers 12.2.72.0
+- Effective license: GPLv3, because the pinned configuration enables GPL/version-3 terms and x264
+- `ffmpeg.exe` SHA-256: `195fd3debe8c83989e0ab6af20a7ad07cbb54fbb3f74ce92415911ca86b7a656`
+- `ffprobe.exe` SHA-256: `2538bd671c99bc671d614077b7dea222c73d66c8fb8a6e13e1d1c771f8c7f409`
+- Corresponding-source archive SHA-256: `456349722e877eb280c795584f0be4c8cba11c83147cbe31bef194a1abaeabf0`
 - GPLv3 license-text SHA-256: `8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903`
 
-The exact configure string from `ffmpeg -version`, license text, build material, and complete corresponding source for FFmpeg and applicable statically linked components must be available with a public binary release.
+The builder pins the Ubuntu base-image digest and snapshot date, verifies every source archive, records the exact toolchain packages and configure command, and emits the paired corresponding-source archive. The binary ZIP includes the FFmpeg, x264, Opus, zimg, zlib, and NVIDIA header notices.
 
 ## CPython
 

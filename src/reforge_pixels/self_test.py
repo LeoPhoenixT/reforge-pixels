@@ -148,15 +148,14 @@ def run_self_test(report_path: Path) -> bool:
                 audio_outputs[suffix] = expected_codec
             report["checks"]["audio_outputs"] = audio_outputs
 
-            hdr_source = root / "hdr-source.mp4"
+            hdr_source = root / "hdr-source.mkv"
             hdr_output = root / "hdr-output.mp4"
             generated_hdr = subprocess.run(
                 [
                     str(ffmpeg), "-hide_banner", "-loglevel", "error", "-y",
                     "-f", "lavfi", "-i", "testsrc2=size=32x32:rate=1:duration=1",
-                    "-vf", "format=yuv420p10le", "-c:v", "libx265", "-preset", "ultrafast",
-                    "-x265-params",
-                    "log-level=error:colorprim=bt2020:transfer=arib-std-b67:colormatrix=bt2020nc:range=limited",
+                    "-vf", "setparams=color_primaries=bt2020:color_trc=arib-std-b67:colorspace=bt2020nc:range=limited,format=yuv420p10le",
+                    "-c:v", "ffv1", "-level", "3",
                     str(hdr_source),
                 ],
                 check=False, capture_output=True, text=True, encoding="utf-8", errors="replace",

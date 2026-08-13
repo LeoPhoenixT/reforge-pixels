@@ -51,6 +51,11 @@ $requiredReleaseFiles = @(
     "licenses\FFmpeg-COPYING.GPLv3.txt",
     "licenses\FFmpeg-build-LICENSE.txt",
     "licenses\FFmpeg-build-README.txt",
+    "licenses\x264-COPYING.txt",
+    "licenses\Opus-COPYING.txt",
+    "licenses\zimg-COPYING.txt",
+    "licenses\zlib-LICENSE.txt",
+    "licenses\nv-codec-headers-LICENSE.txt",
     "licenses\ncnn-LICENSE.txt",
     "licenses\Real-ESRGAN-LICENSE.txt",
     "licenses\Real-ESRGAN-ncnn-vulkan-LICENSE.txt",
@@ -79,12 +84,12 @@ $requiredSources = @(
     "qtbase-everywhere-src-6.10.3.tar.xz",
     "pyside-setup-everywhere-src-6.10.3.tar.xz",
     "pillow-12.3.0.tar.gz",
-    "pillow-heif-1.1.1.tar.gz",
+    "pillow_heif-1.1.1.tar.gz",
     "libheif-1.18.1.tar.gz",
     "libde265-1.0.15.tar.gz",
     "x265-Release_3.4.tar.gz",
     "aom-v3.6.1.tar.gz",
-    "ffmpeg-7.1.1-full-build-corresponding-source.tar.xz"
+    "ffmpeg-7.1.1-minimal-build-corresponding-source.tar.xz"
 )
 $manifestPath = Join-Path $sourceRoot "SOURCE_SHA256SUMS.txt"
 if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {

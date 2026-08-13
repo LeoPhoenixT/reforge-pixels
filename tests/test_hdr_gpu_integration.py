@@ -21,15 +21,15 @@ def test_real_rtx_hdr_to_sdr_pipeline(tmp_path: Path) -> None:
     ffprobe = find_tool("ffprobe")
     if not ffmpeg or not ffprobe:
         pytest.skip("bundled FFmpeg tools are unavailable")
-    source = tmp_path / "tiny-hlg.mp4"
+    source = tmp_path / "tiny-hlg.mkv"
     output = tmp_path / "tiny-hlg-upscaled.mkv"
     completed = subprocess.run([
         str(ffmpeg), "-hide_banner", "-loglevel", "error", "-y",
         "-f", "lavfi", "-i", "testsrc2=size=96x64:rate=5:duration=1",
         "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=1",
-        "-map", "0:v:0", "-map", "1:a:0", "-vf", "format=yuv420p10le",
-        "-c:v", "libx265", "-preset", "ultrafast",
-        "-x265-params", "log-level=error:colorprim=bt2020:transfer=arib-std-b67:colormatrix=bt2020nc:range=limited",
+        "-map", "0:v:0", "-map", "1:a:0",
+        "-vf", "setparams=color_primaries=bt2020:color_trc=arib-std-b67:colorspace=bt2020nc:range=limited,format=yuv420p10le",
+        "-c:v", "ffv1", "-level", "3",
         "-c:a", "aac", str(source),
     ], capture_output=True, text=True, encoding="utf-8", errors="replace")
     assert completed.returncode == 0, completed.stderr

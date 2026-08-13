@@ -16,7 +16,7 @@ $sourceTree = (git -C $projectRoot rev-parse 'HEAD^{tree}').Trim()
 $pythonCandidate = if ([System.IO.Path]::IsPathRooted($PythonPath)) { $PythonPath } else { Join-Path $projectRoot $PythonPath }
 $python = (Resolve-Path $pythonCandidate).Path
 if (-not $FfmpegBinDirectory) {
-    throw "Pass -FfmpegBinDirectory or set FFMPEG_BIN_DIRECTORY to the pinned FFmpeg 7.1.1 full-build bin directory"
+    throw "Pass -FfmpegBinDirectory or set FFMPEG_BIN_DIRECTORY to the pinned self-built FFmpeg 7.1.1 bin directory"
 }
 $ffmpegDirectory = (Resolve-Path $FfmpegBinDirectory).Path
 $buildRoot = Join-Path $projectRoot "build\windows"
@@ -82,8 +82,8 @@ if (-not (Test-Path -LiteralPath (Join-Path $cuganSource "realcugan-ncnn-vulkan.
 
 $ffmpeg = Join-Path $ffmpegDirectory "ffmpeg.exe"
 $ffprobe = Join-Path $ffmpegDirectory "ffprobe.exe"
-Assert-Sha256 $ffmpeg "b1383f5d07470d503edecdaee4bddc5891e986e916a698299b357f79cfe445fd"
-Assert-Sha256 $ffprobe "012bddded3cbc5204055210d7ff4f0b3f7521bca441a694939856d01909f5756"
+Assert-Sha256 $ffmpeg "195fd3debe8c83989e0ab6af20a7ad07cbb54fbb3f74ce92415911ca86b7a656"
+Assert-Sha256 $ffprobe "2538bd671c99bc671d614077b7dea222c73d66c8fb8a6e13e1d1c771f8c7f409"
 
 $licenseDownloads = @(
     @{ Name = "Real-ESRGAN-ncnn-vulkan-LICENSE.txt"; Url = "https://raw.githubusercontent.com/xinntao/Real-ESRGAN-ncnn-vulkan/v0.2.0/LICENSE"; Hash = "5abb941454de437b0e90d78dcb72e3688f74e14bcd4e24393273cb5cd0e9c937" },
@@ -178,6 +178,14 @@ foreach ($license in $licenseDownloads) {
 }
 Copy-Item -LiteralPath $ffmpegBuildReadme -Destination (Join-Path $licenseDestination "FFmpeg-build-README.txt")
 Copy-Item -LiteralPath $ffmpegBuildLicense -Destination (Join-Path $licenseDestination "FFmpeg-build-LICENSE.txt")
+$ffmpegLicenseDirectory = Join-Path $ffmpegDistributionRoot "licenses"
+foreach ($name in @("x264-COPYING.txt", "Opus-COPYING.txt", "zimg-COPYING.txt", "zlib-LICENSE.txt", "nv-codec-headers-LICENSE.txt")) {
+    $source = Join-Path $ffmpegLicenseDirectory $name
+    if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+        throw "Required self-built FFmpeg component notice is missing: $source"
+    }
+    Copy-Item -LiteralPath $source -Destination $licenseDestination
+}
 Copy-Item -LiteralPath (Join-Path $waifuSource "LICENSE") -Destination (Join-Path $licenseDestination "waifu2x-ncnn-vulkan-LICENSE.txt")
 Copy-Item -LiteralPath (Join-Path $cuganSource "LICENSE") -Destination (Join-Path $licenseDestination "realcugan-ncnn-vulkan-LICENSE.txt")
 $pythonBase = (& $python -c "import sys; print(sys.base_prefix)").Trim()

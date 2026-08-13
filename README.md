@@ -91,12 +91,14 @@ py -3.11 -m venv .venv
 Build and verify the Windows package:
 
 ```powershell
-$env:FFMPEG_BIN_DIRECTORY = "C:\path\to\ffmpeg-7.1.1-full_build\bin"
-.\scripts\build_windows.ps1 -CorrespondingSourceDirectory "C:\path\to\corresponding-source"
+.\scripts\build_minimal_ffmpeg_windows.ps1
+.\scripts\prepare_corresponding_source.ps1
+$env:FFMPEG_BIN_DIRECTORY = "$PWD\artifacts\minimal-ffmpeg\bin"
+.\scripts\build_windows.ps1 -CorrespondingSourceDirectory "$PWD\artifacts\corresponding-source"
 .\scripts\verify_windows_release.ps1
 ```
 
-The build requires the pinned FFmpeg 7.1.1 binaries documented in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). It creates paired binary and corresponding-source ZIPs and refuses to finish unless [SOURCE_CODE.md](SOURCE_CODE.md) and [CORRESPONDING_SOURCE.md](CORRESPONDING_SOURCE.md) are satisfied.
+The first command uses the pinned Docker recipe in `scripts/ffmpeg-builder` to cross-compile FFmpeg 7.1.1 and its static dependencies. Toolchain installation is cached, source archives are checksum-verified, concurrent builds are blocked, and the resulting Windows binaries must pass audio, HDR, NVENC, and import-table checks. The packaging step creates paired binary and corresponding-source ZIPs and refuses to finish unless [SOURCE_CODE.md](SOURCE_CODE.md) and [CORRESPONDING_SOURCE.md](CORRESPONDING_SOURCE.md) are satisfied.
 
 For a public release, upload both locally built ZIPs to a draft GitHub release whose tag points to the current `main` commit. Run the **Verify and publish portable release** workflow from `main` with that tag. CI independently checks both archives and publishes the draft only when every gate passes. Do not commit release ZIPs to the repository.
 

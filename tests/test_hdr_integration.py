@@ -31,13 +31,13 @@ def test_real_hdr_to_sdr_metadata_round_trip(
 ) -> None:
     ffmpeg = _tool("REFORGE_PIXELS_TEST_FFMPEG", "ffmpeg")
     ffprobe = _tool("REFORGE_PIXELS_TEST_FFPROBE", "ffprobe")
-    source = tmp_path / f"source-{expected_kind}.mp4"
+    source = tmp_path / f"source-{expected_kind}.mkv"
     output = tmp_path / f"output-{expected_kind}.mp4"
     _run([
         str(ffmpeg), "-hide_banner", "-loglevel", "error", "-y",
         "-f", "lavfi", "-i", "testsrc2=size=96x64:rate=5:duration=1",
-        "-vf", "format=yuv420p10le", "-c:v", "libx265", "-preset", "ultrafast",
-        "-x265-params", f"log-level=error:colorprim=bt2020:transfer={transfer}:colormatrix=bt2020nc:range=limited",
+        "-vf", f"setparams=color_primaries=bt2020:color_trc={transfer}:colorspace=bt2020nc:range=limited,format=yuv420p10le",
+        "-c:v", "ffv1", "-level", "3",
         str(source),
     ])
     media = inspect_media(source, ffprobe)
