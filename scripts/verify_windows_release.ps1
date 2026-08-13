@@ -30,7 +30,7 @@ foreach ($line in Get-Content -LiteralPath $manifestPath) {
 }
 
 $actualPaths = Get-ChildItem -LiteralPath $releaseRoot -Recurse -File |
-    ForEach-Object { [System.IO.Path]::GetRelativePath($releaseRoot, $_.FullName).Replace('\', '/') } |
+    ForEach-Object { $_.FullName.Substring($releaseRoot.TrimEnd('\').Length + 1).Replace('\', '/') } |
     Where-Object { $_ -ne 'SHA256SUMS.txt' }
 foreach ($relative in $actualPaths) {
     if (-not $expectedPaths.Contains($relative)) {
