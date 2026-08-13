@@ -109,6 +109,31 @@ if (Test-Path -LiteralPath $releaseRoot) {
 if (Test-Path -LiteralPath $releaseArchive) {
     Remove-Item -LiteralPath $releaseArchive -Force
 }
+
+function Compress-ArchiveWithRetry {
+    param(
+        [string]$Path,
+        [string]$DestinationPath,
+        [switch]$UseLiteralPath
+    )
+
+    for ($attempt = 1; $attempt -le 5; $attempt++) {
+        if (Test-Path -LiteralPath $DestinationPath) {
+            Remove-Item -LiteralPath $DestinationPath -Force
+        }
+        try {
+            if ($UseLiteralPath) {
+                Compress-Archive -LiteralPath $Path -DestinationPath $DestinationPath -CompressionLevel Optimal
+            } else {
+                Compress-Archive -Path $Path -DestinationPath $DestinationPath -CompressionLevel Optimal
+            }
+            return
+        } catch {
+            if ($attempt -eq 5) { throw }
+            Start-Sleep -Seconds (2 * $attempt)
+        }
+    }
+}
 if (Test-Path -LiteralPath $sourceArchive) {
     Remove-Item -LiteralPath $sourceArchive -Force
 }
@@ -216,9 +241,13 @@ $selfTestProcess = Start-Process `
     -WindowStyle Hidden
 if (-not $selfTestProcess.WaitForExit(60000)) {
     $selfTestProcess.Kill()
+    $selfTestProcess.WaitForExit()
+    $selfTestProcess.Dispose()
     throw "Portable GPU self-test timed out"
 }
-if ($selfTestProcess.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $selfTestReport)) {
+$selfTestExitCode = $selfTestProcess.ExitCode
+$selfTestProcess.Dispose()
+if ($selfTestExitCode -ne 0 -or -not (Test-Path -LiteralPath $selfTestReport)) {
     throw "Portable GPU self-test failed"
 }
 $selfTest = Get-Content -LiteralPath $selfTestReport -Raw | ConvertFrom-Json
@@ -249,8 +278,8 @@ $hashLines = Get-ChildItem -LiteralPath $releaseRoot -Recurse -File |
     -CorrespondingSourceDirectory $CorrespondingSourceDirectory
 if ($LASTEXITCODE -ne 0) { throw "Portable release compliance verification failed" }
 
-Compress-Archive -LiteralPath $releaseRoot -DestinationPath $releaseArchive -CompressionLevel Optimal
-Compress-Archive -Path (Join-Path (Resolve-Path $CorrespondingSourceDirectory).Path "*") -DestinationPath $sourceArchive -CompressionLevel Optimal
+Compress-ArchiveWithRetry -Path $releaseRoot -DestinationPath $releaseArchive -UseLiteralPath
+Compress-ArchiveWithRetry -Path (Join-Path (Resolve-Path $CorrespondingSourceDirectory).Path "*") -DestinationPath $sourceArchive
 
 Write-Output "Portable Windows directory created at: $releaseRoot"
 Write-Output "Portable Windows archive created at: $releaseArchive"
