@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -10,11 +9,7 @@ from reforge_pixels.audio import resolve_audio_actions
 from reforge_pixels.media import inspect_media
 from reforge_pixels.paths import find_tool
 from reforge_pixels.video import audio_encoder_available, mux_final_output, preflight_audio_actions
-
-
-def run(command: list[str]) -> None:
-    completed = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace")
-    assert completed.returncode == 0, completed.stderr
+from integration_helpers import run_command
 
 
 @pytest.fixture()
@@ -34,7 +29,7 @@ def audio_fixture(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
 
     source = tmp_path / "opus-source.mkv"
     joined = tmp_path / "joined-video.mkv"
-    run([
+    run_command([
         str(ffmpeg), "-hide_banner", "-loglevel", "error", "-y",
         "-f", "lavfi", "-i", "testsrc2=size=64x64:rate=10:duration=1",
         "-f", "lavfi", "-i", "sine=frequency=880:sample_rate=48000:duration=1",
@@ -46,7 +41,7 @@ def audio_fixture(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
         "-metadata:s:a:1", "language=jpn", "-metadata:s:a:1", "title=Commentary",
         "-disposition:a:0", "default", "-disposition:a:1", "0", str(source),
     ])
-    run([
+    run_command([
         str(ffmpeg), "-hide_banner", "-loglevel", "error", "-y", "-i", str(source),
         "-map", "0:v:0", "-c:v", "copy", "-an", str(joined),
     ])
@@ -104,7 +99,7 @@ def test_short_audio_does_not_truncate_video(
 ) -> None:
     ffmpeg, ffprobe, _, joined = audio_fixture
     source = tmp_path / "short-audio.mkv"
-    run([
+    run_command([
         str(ffmpeg), "-hide_banner", "-loglevel", "error", "-y",
         "-f", "lavfi", "-i", "testsrc2=size=64x64:rate=10:duration=1",
         "-f", "lavfi", "-i", "sine=frequency=660:sample_rate=48000:duration=0.5",

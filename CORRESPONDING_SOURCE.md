@@ -4,6 +4,8 @@ The portable Windows archive redistributes GPL and LGPL components. A release is
 
 ## Required source bundle
 
+The authoritative machine-readable inventory of archive names, SHA-256 hashes, download URLs, and source kinds is [`scripts/release-sources.json`](scripts/release-sources.json). This document explains the release obligations and expected contents; the preparation and verification scripts both validate and consume that manifest.
+
 Before building, prepare a directory containing these exact files:
 
 - `qtbase-everywhere-src-6.10.3.tar.xz`
