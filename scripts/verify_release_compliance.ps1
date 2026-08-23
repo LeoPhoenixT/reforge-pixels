@@ -80,17 +80,9 @@ if ($ExpectedCommit -and $provenance.commit -ne $ExpectedCommit) {
     throw "Portable archive was built from $($provenance.commit), expected $ExpectedCommit"
 }
 
-$requiredSources = @(
-    "qtbase-everywhere-src-6.10.3.tar.xz",
-    "pyside-setup-everywhere-src-6.10.3.tar.xz",
-    "pillow-12.3.0.tar.gz",
-    "pillow_heif-1.1.1.tar.gz",
-    "libheif-1.18.1.tar.gz",
-    "libde265-1.0.15.tar.gz",
-    "x265-Release_3.4.tar.gz",
-    "aom-v3.6.1.tar.gz",
-    "ffmpeg-7.1.1-minimal-build-corresponding-source.tar.xz"
-)
+. (Join-Path $PSScriptRoot "release-sources.ps1")
+$releaseSources = Read-ReleaseSources -ManifestPath (Join-Path $PSScriptRoot "release-sources.json")
+$requiredSources = @($releaseSources.Name)
 $manifestPath = Join-Path $sourceRoot "SOURCE_SHA256SUMS.txt"
 if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
     throw "Corresponding-source checksum manifest is missing: $manifestPath"

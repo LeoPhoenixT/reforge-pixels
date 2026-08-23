@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Callable
 
 from reforge_pixels.models import ModelDefinition
-from reforge_pixels.paths import application_root, find_tool, platform_name
+from reforge_pixels.paths import application_root, platform_name
 from reforge_pixels.resolution import VALID_SCALES
 
 

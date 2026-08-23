@@ -1,5 +1,4 @@
 import os
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -7,6 +6,7 @@ import pytest
 from reforge_pixels.hdr import hdr_filter, verify_sdr_output
 from reforge_pixels.media import inspect_media
 from reforge_pixels.paths import find_tool
+from integration_helpers import run_command
 
 
 def _tool(env_name: str, tool_name: str) -> Path:
@@ -15,11 +15,6 @@ def _tool(env_name: str, tool_name: str) -> Path:
     if not candidate or not candidate.is_file():
         pytest.skip(f"{tool_name} is unavailable")
     return candidate
-
-
-def _run(command: list[str]) -> None:
-    completed = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace")
-    assert completed.returncode == 0, completed.stderr
 
 
 @pytest.mark.parametrize(
@@ -33,7 +28,7 @@ def test_real_hdr_to_sdr_metadata_round_trip(
     ffprobe = _tool("REFORGE_PIXELS_TEST_FFPROBE", "ffprobe")
     source = tmp_path / f"source-{expected_kind}.mkv"
     output = tmp_path / f"output-{expected_kind}.mp4"
-    _run([
+    run_command([
         str(ffmpeg), "-hide_banner", "-loglevel", "error", "-y",
         "-f", "lavfi", "-i", "testsrc2=size=96x64:rate=5:duration=1",
         "-vf", f"setparams=color_primaries=bt2020:color_trc={transfer}:colorspace=bt2020nc:range=limited,format=yuv420p10le",
@@ -45,7 +40,7 @@ def test_real_hdr_to_sdr_metadata_round_trip(
     conversion_filter = hdr_filter(media, "convert-sdr")
     assert conversion_filter
 
-    _run([
+    run_command([
         str(ffmpeg), "-hide_banner", "-loglevel", "error", "-y", "-i", str(source),
         "-map", "0:v:0", "-vf", conversion_filter, "-c:v", "libx264", "-pix_fmt", "yuv420p",
         "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709",

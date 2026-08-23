@@ -12,3 +12,4 @@ temp/
 /tmp/
 *.log
 /vendor/nvidia/
+/.local-notes/

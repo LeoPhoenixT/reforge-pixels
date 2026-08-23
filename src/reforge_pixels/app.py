@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
 from reforge_pixels.audio import AudioMode, audio_blocking_reasons, resolve_audio_actions
 from reforge_pixels.hdr import HdrMode, hdr_blocking_reasons, hdr_label
 from reforge_pixels.media import MediaInfo, MediaInspectionError, inspect_media
-from reforge_pixels.engine import EngineError, ProcessingCancelled, default_output_path, locate_engine
+from reforge_pixels.engine import EngineError, default_output_path, locate_engine
 from reforge_pixels.image import run_safe_image_upscale, validate_recipe_size
 from reforge_pixels.models import ModelDefinition, ScaleRecipe, compatible_models, load_models
 from reforge_pixels.resolution import resolution_summary
