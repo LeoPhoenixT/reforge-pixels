@@ -11,6 +11,7 @@ from pillow_heif import register_heif_opener
 
 from reforge_pixels.engine import EngineError, EnginePaths, ProcessingCancelled, run_image_upscale
 from reforge_pixels.models import ModelDefinition, ScaleRecipe
+from reforge_pixels.media import image_bit_depth
 
 
 MAX_OUTPUT_DIMENSION = 16_384
@@ -72,14 +73,20 @@ def run_safe_image_upscale(
     tile_size: int = DEFAULT_TILE_SIZE,
     overlap: int = DEFAULT_OVERLAP,
 ) -> None:
+    if cancelled and cancelled():
+        raise ProcessingCancelled("Processing was cancelled")
     register_heif_opener()
     output_path = output_path.resolve()
     if output_path.exists():
         raise EngineError(f"Output already exists: {output_path}")
     try:
         with Image.open(input_path) as opened:
+            if image_bit_depth(input_path, opened) > 8:
+                raise EngineError("HDR or high-bit-depth still images are not supported yet")
             icc_profile = opened.info.get("icc_profile")
             source = ImageOps.exif_transpose(opened).convert("RGBA" if opened.has_transparency_data else "RGB")
+    except EngineError:
+        raise
     except Exception as error:
         raise EngineError(f"Unable to decode input image: {error}") from error
 
@@ -88,6 +95,8 @@ def run_safe_image_upscale(
     partial = output_path.with_name(output_path.stem + ".partial" + output_path.suffix)
 
     try:
+        if cancelled and cancelled():
+            raise ProcessingCancelled("Processing was cancelled")
         selected_recipe = recipe or model.recipe_for(scale)
         if selected_recipe.final_scale != scale:
             raise EngineError("Scale recipe does not match the requested final scale")
@@ -155,6 +164,8 @@ def run_safe_image_upscale(
             if not webp_lossless:
                 save_options["quality"] = output_quality
         result.save(partial, **save_options)
+        if cancelled and cancelled():
+            raise ProcessingCancelled("Processing was cancelled")
         partial.replace(output_path)
         if progress:
             progress(100)

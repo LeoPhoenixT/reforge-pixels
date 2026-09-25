@@ -4,11 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import os
-import queue
 import re
 import subprocess
-import threading
-import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -16,6 +13,7 @@ from typing import Callable
 from reforge_pixels.models import ModelDefinition
 from reforge_pixels.paths import application_root, platform_name
 from reforge_pixels.resolution import VALID_SCALES
+from reforge_pixels.subprocess_runner import drain_process
 
 
 class EngineError(RuntimeError):
@@ -161,6 +159,8 @@ def run_image_upscale(
     noise_level: int | None = None,
     tta: bool = False,
 ) -> None:
+    if cancelled and cancelled():
+        raise ProcessingCancelled("Processing was cancelled")
     verify_model(model, paths.models_directory)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     if output_path.exists():
@@ -172,6 +172,8 @@ def run_image_upscale(
         noise_level=noise_level, tta=tta,
     )
 
+    if cancelled and cancelled():
+        raise ProcessingCancelled("Processing was cancelled")
     process = subprocess.Popen(
         command,
         stdout=subprocess.PIPE,
@@ -181,24 +183,26 @@ def run_image_upscale(
         errors="replace",
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
-    output_lines: list[str] = []
-    assert process.stdout is not None
-    for line in process.stdout:
-        if cancelled and cancelled():
-            process.terminate()
-            process.wait(timeout=5)
-            temporary.unlink(missing_ok=True)
-            raise ProcessingCancelled("Processing was cancelled")
-        output_lines.append(line.rstrip())
+    def on_line(line: str) -> None:
         match = re.search(r"(\d+(?:\.\d+)?)%", line)
         if match and progress:
             progress(min(100, round(float(match.group(1)))))
-    return_code = process.wait()
+    try:
+        return_code, output_lines, was_cancelled = drain_process(process, cancelled, on_line)
+    except BaseException:
+        temporary.unlink(missing_ok=True)
+        raise
+    if was_cancelled:
+        temporary.unlink(missing_ok=True)
+        raise ProcessingCancelled("Processing was cancelled")
 
     if return_code != 0 or not temporary.is_file():
         temporary.unlink(missing_ok=True)
         details = "\n".join(output_lines[-10:])
         raise EngineError(f"Upscaling failed with exit code {return_code}.\n{details}".strip())
+    if cancelled and cancelled():
+        temporary.unlink(missing_ok=True)
+        raise ProcessingCancelled("Processing was cancelled")
     temporary.replace(output_path)
     if progress:
         progress(100)
@@ -216,6 +220,8 @@ def run_directory_upscale(
     tta: bool = False,
 ) -> None:
     """Upscale every supported image in a directory for the video pipeline."""
+    if cancelled and cancelled():
+        raise ProcessingCancelled("Processing was cancelled")
     verify_model(model, paths.models_directory)
     output_directory.mkdir(parents=True, exist_ok=False)
     command = build_image_command(
@@ -231,56 +237,23 @@ def run_directory_upscale(
         errors="replace",
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
-    output_queue: queue.Queue[str | None] = queue.Queue()
-
-    def consume_output() -> None:
-        assert process.stdout is not None
-        try:
-            for line in process.stdout:
-                output_queue.put(line.rstrip())
-        finally:
-            output_queue.put(None)
-
-    reader = threading.Thread(target=consume_output, name="ncnn-output-reader", daemon=True)
-    reader.start()
-    output_lines: list[str] = []
     input_count = sum(1 for _ in input_directory.glob("*.png"))
     last_output_count = -1
-    while process.poll() is None:
-        while True:
-            try:
-                line = output_queue.get_nowait()
-            except queue.Empty:
-                break
-            if line is not None:
-                output_lines.append(line)
-                if len(output_lines) > 50:
-                    del output_lines[:-50]
+
+    def tick() -> None:
+        nonlocal last_output_count
         if progress and input_count:
             output_count = sum(1 for _ in output_directory.glob("*.png"))
             if output_count != last_output_count:
                 progress(min(99, round(output_count / input_count * 100)))
                 last_output_count = output_count
-        if cancelled and cancelled():
-            process.terminate()
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=5)
-            raise ProcessingCancelled("Processing was cancelled")
-        time.sleep(0.1)
-    reader.join(timeout=2)
-    while True:
-        try:
-            line = output_queue.get_nowait()
-        except queue.Empty:
-            break
-        if line is not None:
-            output_lines.append(line)
-    if process.returncode != 0:
+
+    return_code, output_lines, was_cancelled = drain_process(process, cancelled, on_tick=tick)
+    if was_cancelled:
+        raise ProcessingCancelled("Processing was cancelled")
+    if return_code != 0:
         raise EngineError(
-            f"Frame upscaling failed with exit code {process.returncode}.\n"
+            f"Frame upscaling failed with exit code {return_code}.\n"
             + "\n".join(output_lines[-10:])
         )
     if not any(output_directory.glob("*.png")):

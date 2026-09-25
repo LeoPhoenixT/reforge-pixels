@@ -38,6 +38,14 @@ class AudioAction:
             return self.target_codec
         return None
 
+    @property
+    def expected_sample_rate(self) -> int | None:
+        if self.kind == "copy":
+            return self.stream.sample_rate
+        if self.kind == "transcode":
+            return 48_000 if self.target_codec == "opus" else self.stream.sample_rate
+        return None
+
     def display(self) -> str:
         prefix = f"Audio {self.stream.index}: {self.stream.codec.upper()}"
         if self.kind == "copy":

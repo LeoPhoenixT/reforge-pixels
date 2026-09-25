@@ -113,3 +113,27 @@ def test_short_audio_does_not_truncate_video(
     verified = inspect_media(output, ffprobe)
     assert (verified.duration_seconds or 0) >= 0.9
     assert verified.audio_streams == 1
+
+
+def test_real_44100_flac_to_opus_uses_expected_output_rate(
+    audio_fixture: tuple[Path, Path, Path, Path], tmp_path: Path,
+) -> None:
+    ffmpeg, ffprobe, _, joined = audio_fixture
+    source = tmp_path / "flac-44100.mkv"
+    run_command([
+        str(ffmpeg), "-hide_banner", "-loglevel", "error", "-y",
+        "-f", "lavfi", "-i", "testsrc2=size=64x64:rate=10:duration=1",
+        "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=44100:duration=1",
+        "-map", "0:v:0", "-map", "1:a:0", "-c:v", "libx264",
+        "-pix_fmt", "yuv420p", "-c:a", "flac", str(source),
+    ])
+    media = inspect_media(source, ffprobe)
+    assert media.audio_details[0].sample_rate == 44_100
+    actions = resolve_audio_actions(media, ".mkv", "opus")
+    assert actions[0].expected_sample_rate == 48_000
+    preflight_audio_actions(ffmpeg, media, ".mkv", actions, tmp_path)
+    output = tmp_path / "opus-48000.mkv"
+    mux_final_output(ffmpeg, ffprobe, joined, media, output, actions)
+    actual = inspect_media(output, ffprobe)
+    assert actual.audio_codecs == ("opus",)
+    assert actual.audio_details[0].sample_rate == 48_000
