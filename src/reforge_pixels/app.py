@@ -8,8 +8,8 @@ import argparse
 from importlib.resources import files
 from pathlib import Path
 
-from PySide6.QtCore import QThread, Qt, Signal
-from PySide6.QtGui import QDragEnterEvent, QDropEvent, QIcon
+from PySide6.QtCore import QThread, Qt, Signal, QTimer
+from PySide6.QtGui import QCloseEvent, QDragEnterEvent, QDropEvent, QIcon
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -49,12 +49,19 @@ class InspectionThread(QThread):
     def __init__(self, path: Path, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.path = path
+        self._cancel_requested = False
+
+    def cancel(self) -> None:
+        self._cancel_requested = True
 
     def run(self) -> None:
         try:
-            self.succeeded.emit(inspect_media(self.path))
+            media = inspect_media(self.path, cancelled=lambda: self._cancel_requested)
+            if not self._cancel_requested:
+                self.succeeded.emit(media)
         except MediaInspectionError as error:
-            self.failed.emit(str(error))
+            if not self._cancel_requested:
+                self.failed.emit(str(error))
 
 
 class UpscaleThread(QThread):
@@ -157,6 +164,8 @@ class MainWindow(QMainWindow):
         self._media: MediaInfo | None = None
         self._inspection: InspectionThread | None = None
         self._upscale: UpscaleThread | None = None
+        self._closing = False
+        self._starting_upscale = False
         self._models = load_models()
         self._progress_started = 0.0
         self._current_stage = ""
@@ -337,6 +346,8 @@ class MainWindow(QMainWindow):
         self._populate_output_formats("image")
 
     def choose_file(self) -> None:
+        if self._closing or self._inspection is not None or self._upscale is not None:
+            return
         path, _ = QFileDialog.getOpenFileName(
             self,
             "Choose an image or video",
@@ -347,21 +358,35 @@ class MainWindow(QMainWindow):
             self.load_file(path)
 
     def load_file(self, path: str) -> None:
-        if self._inspection and self._inspection.isRunning():
+        if self._closing or self._inspection is not None or self._upscale is not None or self._starting_upscale:
             return
+        self._media = None
         self._set_loading(True)
+        self.upscale_button.setEnabled(False)
         self.file_label.setText(Path(path).name)
         self.status_label.setText("Inspecting media…")
         self._inspection = InspectionThread(Path(path), self)
         self._inspection.succeeded.connect(self._inspection_succeeded)
         self._inspection.failed.connect(self._inspection_failed)
-        self._inspection.finished.connect(lambda: self._set_loading(False))
+        self._inspection.finished.connect(self._inspection_finished)
         self._inspection.start()
+
+    def _inspection_finished(self) -> None:
+        assert self._inspection is not None
+        self._inspection.deleteLater()
+        self._inspection = None
+        self._set_loading(False)
+        if self._closing:
+            QTimer.singleShot(0, self.close)
+        else:
+            self._update_resolution()
 
     def _set_loading(self, loading: bool) -> None:
         self.drop_panel.setEnabled(not loading)
 
     def _inspection_succeeded(self, media: MediaInfo) -> None:
+        if self._closing:
+            return
         self._media = media
         self.input_type_combo.blockSignals(True)
         self.input_type_combo.setCurrentIndex(0 if media.media_type == "image" else 1)
@@ -380,6 +405,8 @@ class MainWindow(QMainWindow):
         self._update_resolution()
 
     def _inspection_failed(self, message: str) -> None:
+        if self._closing:
+            return
         self._media = None
         self.resolution_label.setText("Input: —  →  Output: —")
         self.status_label.setText("Unable to inspect file")
@@ -579,6 +606,9 @@ class MainWindow(QMainWindow):
         self.noise_combo.setEnabled(True)
 
     def _update_resolution(self) -> None:
+        if self._closing or self._inspection is not None or self._upscale is not None or self._starting_upscale:
+            self.upscale_button.setEnabled(False)
+            return
         if not self._media:
             self.resolution_label.setText("Input: —  →  Output: —")
             self.upscale_button.setEnabled(False)
@@ -614,6 +644,15 @@ class MainWindow(QMainWindow):
                 self.upscale_button.setToolTip("The selected bundled engine or model directory was not found.")
 
     def start_upscale(self) -> None:
+        if self._closing or self._inspection is not None or self._upscale is not None or self._starting_upscale:
+            return
+        self._starting_upscale = True
+        try:
+            self._start_upscale()
+        finally:
+            self._starting_upscale = False
+
+    def _start_upscale(self) -> None:
         model = self.model_combo.currentData()
         recipe = self.scale_combo.currentData()
         if not self._media or not isinstance(model, ModelDefinition) or not isinstance(recipe, ScaleRecipe):
@@ -634,6 +673,8 @@ class MainWindow(QMainWindow):
             file_filter,
         )
         if not output:
+            return
+        if self._closing or self._inspection is not None or self._upscale is not None:
             return
         output_path = Path(output)
         if output_path.suffix.lower() != extension:
@@ -657,14 +698,19 @@ class MainWindow(QMainWindow):
         self._upscale.stage_changed.connect(self._on_stage_changed)
         self._upscale.completed.connect(self._upscale_completed)
         self._upscale.failed.connect(self._upscale_failed)
+        self._upscale.finished.connect(self._upscale_finished)
         self._upscale.start()
 
         self.cancel_button.setVisible(True)
 
     def _on_stage_changed(self, stage: str) -> None:
+        if self._closing:
+            return
         self._current_stage = stage
 
     def _on_progress(self, value: int) -> None:
+        if self._closing:
+            return
         self.progress_bar.setValue(value)
         elapsed = max(0.0, time.monotonic() - self._progress_started)
         details = [self._current_stage, f"{value}%", f"elapsed {self._format_duration(elapsed)}"]
@@ -697,6 +743,8 @@ class MainWindow(QMainWindow):
             self.status_label.setText("Cancelling…")
 
     def _upscale_completed(self, output: str) -> None:
+        if self._closing:
+            return
         self.progress_bar.setValue(100)
         self.cancel_button.setVisible(False)
         self.cancel_button.setEnabled(True)
@@ -705,6 +753,8 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, "Upscale complete", f"Saved to:\n{output}")
 
     def _upscale_failed(self, message: str) -> None:
+        if self._closing:
+            return
         self.cancel_button.setVisible(False)
         self.cancel_button.setEnabled(True)
         if message == "Processing was cancelled":
@@ -714,6 +764,28 @@ class MainWindow(QMainWindow):
             self.status_label.setText("Upscaling failed")
             QMessageBox.critical(self, "Upscaling failed", message)
         self._update_resolution()
+
+    def _upscale_finished(self) -> None:
+        assert self._upscale is not None
+        self._upscale.deleteLater()
+        self._upscale = None
+        if self._closing:
+            QTimer.singleShot(0, self.close)
+        else:
+            self._update_resolution()
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        if self._inspection is not None or self._upscale is not None:
+            self._closing = True
+            if self._inspection is not None:
+                self._inspection.cancel()
+            if self._upscale is not None:
+                self._upscale.cancel()
+            self.status_label.setText("Closing after current work stops…")
+            self.setEnabled(False)
+            event.ignore()
+            return
+        event.accept()
 
 
 def main() -> int:

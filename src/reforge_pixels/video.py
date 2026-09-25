@@ -5,7 +5,6 @@ from __future__ import annotations
 import shutil
 import subprocess
 import tempfile
-import time
 from pathlib import Path
 from typing import Callable
 
@@ -15,6 +14,7 @@ from reforge_pixels.hdr import HdrMode, hdr_blocking_reasons, hdr_filter, verify
 from reforge_pixels.media import MediaInfo, MediaInspectionError, inspect_media
 from reforge_pixels.models import ModelDefinition, ScaleRecipe
 from reforge_pixels.paths import find_tool
+from reforge_pixels.subprocess_runner import drain_process
 
 
 class VideoProcessingError(RuntimeError):
@@ -51,25 +51,23 @@ def estimate_chunk_temp_bytes(
 
 
 def _run(command: list[str], stage: str, cancelled: Callable[[], bool] | None = None) -> None:
+    if cancelled and cancelled():
+        raise ProcessingCancelled("Processing was cancelled")
     process = subprocess.Popen(
         command,
-        stdout=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
         text=True,
         encoding="utf-8",
         errors="replace",
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
-    while process.poll() is None:
-        if cancelled and cancelled():
-            process.terminate()
-            process.wait(timeout=5)
-            raise ProcessingCancelled("Processing was cancelled")
-        time.sleep(0.1)
-    _, stderr = process.communicate()
-    if process.returncode != 0:
-        detail = "\n".join(stderr.splitlines()[-12:])
-        raise VideoProcessingError(f"{stage} failed with exit code {process.returncode}.\n{detail}")
+    return_code, stderr, was_cancelled = drain_process(process, cancelled)
+    if was_cancelled:
+        raise ProcessingCancelled("Processing was cancelled")
+    if return_code != 0:
+        detail = "\n".join(stderr[-12:])
+        raise VideoProcessingError(f"{stage} failed with exit code {return_code}.\n{detail}")
 
 
 def nvenc_available(ffmpeg_path: str | Path | None = None) -> bool:
@@ -138,6 +136,8 @@ def build_final_mux_command(
             command += [f"-c:a:{output_index}", "libopus", f"-b:a:{output_index}", f"{action.bitrate_kbps or 160}k"]
         else:
             raise VideoProcessingError(f"No encoder is defined for audio target: {action.target_codec}")
+        if action.kind == "transcode" and action.expected_sample_rate is not None:
+            command += [f"-ar:a:{output_index}", str(action.expected_sample_rate)]
 
         if action.stream.language:
             command += [f"-metadata:s:a:{output_index}", f"language={action.stream.language}"]
@@ -176,7 +176,7 @@ def verify_muxed_audio(source: MediaInfo, output: MediaInfo, actions: tuple[Audi
             raise VideoProcessingError(
                 f"Audio verification failed for stream {output_index + 1}: channel layout changed"
             )
-        if action.stream.sample_rate is not None and actual.sample_rate != action.stream.sample_rate:
+        if action.expected_sample_rate is not None and actual.sample_rate != action.expected_sample_rate:
             raise VideoProcessingError(
                 f"Audio verification failed for stream {output_index + 1}: sample rate changed"
             )
@@ -250,9 +250,11 @@ def mux_final_output(
         output_path.unlink(missing_ok=True)
         raise
     try:
-        verified = inspect_media(output_path, ffprobe_path)
+        verified = inspect_media(output_path, ffprobe_path, cancelled=cancelled)
     except Exception as error:
         output_path.unlink(missing_ok=True)
+        if cancelled and cancelled():
+            raise ProcessingCancelled("Processing was cancelled") from error
         raise VideoProcessingError(f"Unable to verify final audio streams: {error}") from error
     try:
         verify_muxed_audio(source_media, verified, actions)
@@ -498,10 +500,14 @@ def process_cfr_video(
         )
         if conversion_filter:
             try:
-                verify_sdr_output(inspect_media(temporary_output, ffprobe_executable))
+                verify_sdr_output(inspect_media(temporary_output, ffprobe_executable, cancelled=cancelled))
             except (ValueError, MediaInspectionError, OSError) as error:
                 temporary_output.unlink(missing_ok=True)
+                if cancelled and cancelled():
+                    raise ProcessingCancelled("Processing was cancelled") from error
                 raise VideoProcessingError(str(error)) from error
+        if cancelled and cancelled():
+            raise ProcessingCancelled("Processing was cancelled")
         temporary_output.replace(output_path)
         if progress:
             progress("Complete", 100)

@@ -9,9 +9,11 @@ from dataclasses import dataclass
 from fractions import Fraction
 from pathlib import Path
 from typing import Any, Literal
+from typing import Callable
 
 from reforge_pixels.resolution import Resolution, oriented_resolution
 from reforge_pixels.paths import find_tool
+from reforge_pixels.subprocess_runner import stop_process
 
 
 STILL_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff", ".heic", ".heif", ".avif"}
@@ -223,7 +225,34 @@ def _discarded_stream_descriptions(
     return (f"{mebx_count} Apple QuickTime metadata {noun} ('mebx') will be removed from output",)
 
 
-def inspect_media(path: Path, ffprobe_path: str | Path | None = None) -> MediaInfo:
+def image_bit_depth(path: Path, opened: Any) -> int:
+    """Read source sample depth before Pillow normalizes multichannel pixels."""
+    image_format = str(opened.format or "").upper()
+    if image_format == "PNG":
+        with path.open("rb") as stream:
+            header = stream.read(26)
+        if header[:8] == b"\x89PNG\r\n\x1a\n" and header[12:16] == b"IHDR":
+            return header[24]
+    if image_format == "TIFF":
+        depths = opened.tag_v2.get(258, ())
+        if isinstance(depths, int):
+            return depths
+        if depths:
+            return max(int(depth) for depth in depths)
+    if opened.mode.startswith("I;16"):
+        return 16
+    if opened.mode in {"I", "F"}:
+        return 32
+    if image_format in {"HEIF", "HEIC", "AVIF"}:
+        from pillow_heif import open_heif
+        return int(open_heif(path, convert_hdr_to_8bit=False).info.get("bit_depth", 8))
+    return 8
+
+
+def inspect_media(
+    path: Path, ffprobe_path: str | Path | None = None,
+    cancelled: Callable[[], bool] | None = None,
+) -> MediaInfo:
     path = path.expanduser().resolve()
     if not path.is_file():
         raise MediaInspectionError(f"File does not exist: {path}")
@@ -231,17 +260,18 @@ def inspect_media(path: Path, ffprobe_path: str | Path | None = None) -> MediaIn
     if path.suffix.lower() in STILL_IMAGE_EXTENSIONS:
         try:
             from PIL import Image, ImageOps
-            from pillow_heif import open_heif, register_heif_opener
+            from pillow_heif import register_heif_opener
 
             register_heif_opener()
-            bit_depth = 8
-            if path.suffix.lower() in {".heic", ".heif", ".avif"}:
-                heif = open_heif(path, convert_hdr_to_8bit=False)
-                bit_depth = int(heif.info.get("bit_depth", 8))
+            if cancelled and cancelled():
+                raise MediaInspectionError("Inspection was cancelled")
             with Image.open(path) as opened:
+                bit_depth = image_bit_depth(path, opened)
                 oriented = ImageOps.exif_transpose(opened)
                 width, height = oriented.size
                 mode = opened.mode
+            if cancelled and cancelled():
+                raise MediaInspectionError("Inspection was cancelled")
             return MediaInfo(
                 path=path,
                 media_type="image",
@@ -283,24 +313,38 @@ def inspect_media(path: Path, ffprobe_path: str | Path | None = None) -> MediaIn
         str(path),
     ]
     try:
-        completed = subprocess.run(
+        if cancelled and cancelled():
+            raise MediaInspectionError("Inspection was cancelled")
+        process = subprocess.Popen(
             command,
-            check=False,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
             encoding="utf-8",
             errors="replace",
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
+        while True:
+            if cancelled and cancelled():
+                stop_process(process)
+                process.communicate()
+                raise MediaInspectionError("Inspection was cancelled")
+            try:
+                stdout, stderr = process.communicate(timeout=0.1)
+                break
+            except subprocess.TimeoutExpired:
+                continue
     except OSError as error:
         raise MediaInspectionError(f"Could not start ffprobe: {error}") from error
 
-    if completed.returncode != 0:
-        detail = completed.stderr.strip() or "unknown ffprobe error"
+    if cancelled and cancelled():
+        raise MediaInspectionError("Inspection was cancelled")
+    if process.returncode != 0:
+        detail = stderr.strip() or "unknown ffprobe error"
         raise MediaInspectionError(f"Unable to inspect media: {detail}")
 
     try:
-        payload = json.loads(completed.stdout)
+        payload = json.loads(stdout)
     except json.JSONDecodeError as error:
         raise MediaInspectionError("ffprobe returned invalid metadata") from error
 
