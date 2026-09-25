@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "reforge-pixels"
-version = "0.1.0"
+version = "0.1.1"
 description = "Offline RTX-accelerated image and video upscaler"
 readme = "README.md"
 license = "GPL-3.0-or-later"
