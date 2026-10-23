@@ -11,7 +11,7 @@ from pillow_heif import register_heif_opener
 
 from reforge_pixels.engine import EngineError, EnginePaths, ProcessingCancelled, run_image_upscale
 from reforge_pixels.models import ModelDefinition, ScaleRecipe
-from reforge_pixels.media import image_bit_depth
+from reforge_pixels.media import STILL_IMAGE_FORMATS, image_bit_depth
 
 
 MAX_OUTPUT_DIMENSION = 16_384
@@ -80,7 +80,7 @@ def run_safe_image_upscale(
     if output_path.exists():
         raise EngineError(f"Output already exists: {output_path}")
     try:
-        with Image.open(input_path) as opened:
+        with Image.open(input_path, formats=STILL_IMAGE_FORMATS) as opened:
             if image_bit_depth(input_path, opened) > 8:
                 raise EngineError("HDR or high-bit-depth still images are not supported yet")
             icc_profile = opened.info.get("icc_profile")

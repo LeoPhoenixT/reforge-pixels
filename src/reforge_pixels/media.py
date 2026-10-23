@@ -17,6 +17,7 @@ from reforge_pixels.subprocess_runner import stop_process
 
 
 STILL_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff", ".heic", ".heif", ".avif"}
+STILL_IMAGE_FORMATS = ("PNG", "JPEG", "WEBP", "BMP", "TIFF", "HEIF", "AVIF")
 HdrKind = Literal["none", "pq", "hlg", "high-bit-depth", "dolby-vision"]
 
 
@@ -265,7 +266,7 @@ def inspect_media(
             register_heif_opener()
             if cancelled and cancelled():
                 raise MediaInspectionError("Inspection was cancelled")
-            with Image.open(path) as opened:
+            with Image.open(path, formats=STILL_IMAGE_FORMATS) as opened:
                 bit_depth = image_bit_depth(path, opened)
                 oriented = ImageOps.exif_transpose(opened)
                 width, height = oriented.size
@@ -306,6 +307,8 @@ def inspect_media(
         str(executable),
         "-v",
         "error",
+        "-protocol_whitelist",
+        "file,pipe",
         "-print_format",
         "json",
         "-show_format",

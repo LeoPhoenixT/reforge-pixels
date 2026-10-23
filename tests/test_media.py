@@ -82,3 +82,23 @@ def test_records_audio_stream_metadata_and_timing() -> None:
     assert (stream.language, stream.title) == ("jpn", "Surround")
     assert stream.dispositions == ("comment", "default")
     assert (stream.start_time, stream.duration_seconds) == (0.021, 10.5)
+
+
+def test_disguised_eps_is_rejected_before_external_renderer(tmp_path, monkeypatch):
+    import PIL.EpsImagePlugin
+    import pytest
+    from reforge_pixels.media import MediaInspectionError, inspect_media
+    from reforge_pixels.image import run_safe_image_upscale
+    from reforge_pixels.engine import EngineError, EnginePaths
+    from reforge_pixels.models import load_models
+
+    disguised = tmp_path / "untrusted.png"
+    disguised.write_bytes(b"%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 0 0 8 8\nshowpage\n")
+    def forbidden_renderer(*args, **kwargs):
+        pytest.fail("Unsupported content must not launch Ghostscript")
+    monkeypatch.setattr(PIL.EpsImagePlugin, "Ghostscript", forbidden_renderer)
+    with pytest.raises(MediaInspectionError, match="Unable to inspect image"):
+        inspect_media(disguised)
+    with pytest.raises(EngineError, match="Unable to decode input image"):
+        run_safe_image_upscale(EnginePaths(tmp_path / "engine", tmp_path), load_models()[0],
+                               disguised, tmp_path / "result.png", 2)

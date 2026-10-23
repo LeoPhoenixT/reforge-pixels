@@ -47,3 +47,10 @@ function Read-ReleaseSources {
     }
     return @($manifest.sources)
 }
+
+function Assert-ReleaseSourcePin {
+    param([string]$Name, [string]$DeclaredHash, [string]$ExpectedHash)
+    if ($DeclaredHash -ne $ExpectedHash) {
+        throw "Corresponding-source manifest does not match the trusted release pin: $Name"
+    }
+}

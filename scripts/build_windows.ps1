@@ -15,8 +15,10 @@ $sourceCommit = (git -C $projectRoot rev-parse HEAD).Trim()
 $sourceTree = (git -C $projectRoot rev-parse 'HEAD^{tree}').Trim()
 $pythonCandidate = if ([System.IO.Path]::IsPathRooted($PythonPath)) { $PythonPath } else { Join-Path $projectRoot $PythonPath }
 $python = (Resolve-Path $pythonCandidate).Path
+& $python (Join-Path $PSScriptRoot "verify_build_environment.py")
+if ($LASTEXITCODE -ne 0) { throw "Portable build environment failed the security checks" }
 if (-not $FfmpegBinDirectory) {
-    throw "Pass -FfmpegBinDirectory or set FFMPEG_BIN_DIRECTORY to the pinned self-built FFmpeg 7.1.1 bin directory"
+    throw "Pass -FfmpegBinDirectory or set FFMPEG_BIN_DIRECTORY to the pinned self-built FFmpeg 7.1.5 bin directory"
 }
 $ffmpegDirectory = (Resolve-Path $FfmpegBinDirectory).Path
 $buildRoot = Join-Path $projectRoot "build\windows"
@@ -82,14 +84,14 @@ if (-not (Test-Path -LiteralPath (Join-Path $cuganSource "realcugan-ncnn-vulkan.
 
 $ffmpeg = Join-Path $ffmpegDirectory "ffmpeg.exe"
 $ffprobe = Join-Path $ffmpegDirectory "ffprobe.exe"
-Assert-Sha256 $ffmpeg "195fd3debe8c83989e0ab6af20a7ad07cbb54fbb3f74ce92415911ca86b7a656"
-Assert-Sha256 $ffprobe "2538bd671c99bc671d614077b7dea222c73d66c8fb8a6e13e1d1c771f8c7f409"
+Assert-Sha256 $ffmpeg "6f8716b2c0d28b031522c0e005ce87769bf5dceb86a566e5437d030406d6b013"
+Assert-Sha256 $ffprobe "9eab48a09285732b780d7e801367b7161563be96e62147f194e572ed81464df5"
 
 $licenseDownloads = @(
     @{ Name = "Real-ESRGAN-ncnn-vulkan-LICENSE.txt"; Url = "https://raw.githubusercontent.com/xinntao/Real-ESRGAN-ncnn-vulkan/v0.2.0/LICENSE"; Hash = "5abb941454de437b0e90d78dcb72e3688f74e14bcd4e24393273cb5cd0e9c937" },
     @{ Name = "Real-ESRGAN-LICENSE.txt"; Url = "https://raw.githubusercontent.com/xinntao/Real-ESRGAN/v0.2.5.0/LICENSE"; Hash = "4a699ec4863d96a91fc265948a0c90033f7e8735d515524dcf3444736406e0c2" },
     @{ Name = "ncnn-LICENSE.txt"; Url = "https://raw.githubusercontent.com/Tencent/ncnn/20220420/LICENSE.txt"; Hash = "6495f972a09ad7f64ccd953e79adba91a93d862edc7135e6d95210bbf4002a01" },
-    @{ Name = "FFmpeg-COPYING.GPLv3.txt"; Url = "https://raw.githubusercontent.com/FFmpeg/FFmpeg/n7.1.1/COPYING.GPLv3"; Hash = "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903" }
+    @{ Name = "FFmpeg-COPYING.GPLv3.txt"; Url = "https://raw.githubusercontent.com/FFmpeg/FFmpeg/n7.1.5/COPYING.GPLv3"; Hash = "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903" }
 )
 New-Item -ItemType Directory -Force -Path $licenseSource | Out-Null
 foreach ($license in $licenseDownloads) {
@@ -139,7 +141,7 @@ if (Test-Path -LiteralPath $sourceArchive) {
 }
 New-Item -ItemType Directory -Force -Path $buildRoot,$releaseRoot | Out-Null
 
-& $python -m pip install "Nuitka==2.7.11" "ordered-set==4.1.0" "zstandard==0.23.0"
+& $python -m pip install --require-hashes -r (Join-Path $projectRoot "requirements-build.lock")
 if ($LASTEXITCODE -ne 0) { throw "Unable to install pinned build dependencies" }
 
 & $python -m nuitka `
@@ -221,9 +223,9 @@ if (-not (Test-Path -LiteralPath $pythonLicense -PathType Leaf)) {
 Copy-Item -LiteralPath $pythonLicense -Destination (Join-Path $licenseDestination "CPython-LICENSE.txt")
 $pythonSitePackages = Join-Path (Split-Path $python -Parent) "..\Lib\site-packages"
 $wheelLicenses = @(
-    @{ Source = "pillow-12.3.0.dist-info\licenses\LICENSE"; Destination = "Pillow-LICENSE.txt" },
-    @{ Source = "pillow_heif-1.1.1.dist-info\licenses\LICENSE.txt"; Destination = "pillow-heif-LICENSE.txt" },
-    @{ Source = "pillow_heif-1.1.1.dist-info\licenses\LICENSES_bundled.txt"; Destination = "pillow-heif-bundled-LICENSES.txt" }
+    @{ Source = "pillow-13.0.0.dist-info\licenses\LICENSE"; Destination = "Pillow-LICENSE.txt" },
+    @{ Source = "pillow_heif-1.8.1.dist-info\licenses\LICENSE.txt"; Destination = "pillow-heif-LICENSE.txt" },
+    @{ Source = "pillow_heif-1.8.1.dist-info\licenses\LICENSES_bundled.txt"; Destination = "pillow-heif-bundled-LICENSES.txt" }
 )
 foreach ($license in $wheelLicenses) {
     $source = Join-Path $pythonSitePackages $license.Source

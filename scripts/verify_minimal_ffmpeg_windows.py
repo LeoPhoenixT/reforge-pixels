@@ -76,7 +76,7 @@ def main() -> int:
     require(
         version,
         (
-            "ffmpeg version 7.1.1", "--enable-gpl", "--enable-version3",
+            "ffmpeg version 7.1.5", "--enable-gpl", "--enable-version3",
             "--enable-libx264", "--enable-libopus", "--enable-libzimg",
             "--enable-ffnvcodec", "--enable-nvenc", "--enable-zlib", "--disable-network",
         ),

@@ -87,6 +87,13 @@ def test_final_mux_command_maps_stream_and_transcodes_opus_for_mp4() -> None:
     assert "-c" not in command
     assert "-shortest" not in command
     assert command[command.index("-t") + 1] == "10"
+    # Input restrictions apply separately to both inputs; metadata and codec
+    # arguments stay separate argv elements with no shell interpretation.
+    inputs = [index for index, value in enumerate(command) if value == "-i"]
+    assert len(inputs) == 2
+    for index in inputs:
+        assert command[index - 2:index] == ["-protocol_whitelist", "file,pipe"]
+        assert Path(command[index + 1]).is_absolute()
 
 
 def test_audio_verification_allows_inferred_default_on_first_stream() -> None:
