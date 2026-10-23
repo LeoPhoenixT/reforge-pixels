@@ -103,6 +103,8 @@ The first command uses the pinned Docker recipe in `scripts/ffmpeg-builder` to c
 
 For development, place the verified `ffmpeg.exe` and `ffprobe.exe` in `runtime/tools/windows`, or prepend the verified build's `bin` directory to your process `PATH`. Development otherwise falls back to the system tools, whose version and provenance you must check. Portable builds use only their bundled tools. User media inputs are restricted to local `file`/`pipe` protocols; network playlists and encrypted playlist protocols are not supported.
 
+To preserve previous build and release artifacts, pass new project-relative `-BuildDirectory` and `-OutputDirectory` paths to `build_windows.ps1`, for example `artifacts\release-v0.1.2-build` and `artifacts\release-v0.1.2-output`. Build paths must be below `build` or `artifacts`; output paths must be `dist` or below `dist` or `artifacts`. The paths must not overlap. The default paths remain `build\windows` and `dist`.
+
 For a public release, upload both locally built ZIPs to a draft GitHub release whose tag points to the current `main` commit. Run the **Verify and publish portable release** workflow from `main` with that tag. CI independently checks both archives and publishes the draft only when every gate passes. Do not commit release ZIPs to the repository.
 
 ## License

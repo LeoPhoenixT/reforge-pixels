@@ -2,6 +2,8 @@
 param(
     [string]$PythonPath = ".venv\Scripts\python.exe",
     [string]$FfmpegBinDirectory = $env:FFMPEG_BIN_DIRECTORY,
+    [string]$BuildDirectory = "build\windows",
+    [string]$OutputDirectory = "dist",
     [Parameter(Mandatory = $true)]
     [string]$CorrespondingSourceDirectory
 )
@@ -21,8 +23,26 @@ if (-not $FfmpegBinDirectory) {
     throw "Pass -FfmpegBinDirectory or set FFMPEG_BIN_DIRECTORY to the pinned self-built FFmpeg 7.1.5 bin directory"
 }
 $ffmpegDirectory = (Resolve-Path $FfmpegBinDirectory).Path
-$buildRoot = Join-Path $projectRoot "build\windows"
-$releaseRoot = Join-Path $projectRoot "dist\Reforge-Pixels-windows-x64"
+$buildRoot = [System.IO.Path]::GetFullPath((Join-Path $projectRoot $BuildDirectory))
+$distributionRoot = [System.IO.Path]::GetFullPath((Join-Path $projectRoot $OutputDirectory))
+$artifactsPrefix = (Join-Path $projectRoot "artifacts") + "\"
+$buildPrefix = (Join-Path $projectRoot "build") + "\"
+$distRoot = Join-Path $projectRoot "dist"
+if (-not ($buildRoot.StartsWith($artifactsPrefix, [StringComparison]::OrdinalIgnoreCase) -or
+          $buildRoot.StartsWith($buildPrefix, [StringComparison]::OrdinalIgnoreCase))) {
+    throw "Build directory must be a subdirectory of build or artifacts"
+}
+if (-not ($distributionRoot.StartsWith($artifactsPrefix, [StringComparison]::OrdinalIgnoreCase) -or
+          $distributionRoot.Equals($distRoot, [StringComparison]::OrdinalIgnoreCase) -or
+          $distributionRoot.StartsWith($distRoot + "\", [StringComparison]::OrdinalIgnoreCase))) {
+    throw "Output directory must be dist or a subdirectory of dist or artifacts"
+}
+if ($buildRoot.Equals($distributionRoot, [StringComparison]::OrdinalIgnoreCase) -or
+    $buildRoot.StartsWith($distributionRoot + "\", [StringComparison]::OrdinalIgnoreCase) -or
+    $distributionRoot.StartsWith($buildRoot + "\", [StringComparison]::OrdinalIgnoreCase)) {
+    throw "Build and output directories must not overlap"
+}
+$releaseRoot = Join-Path $distributionRoot "Reforge-Pixels-windows-x64"
 $downloadDirectory = Join-Path $projectRoot "artifacts\downloads"
 $engineArchive = Join-Path $downloadDirectory "realesrgan-ncnn-vulkan-20220424-windows.zip"
 $engineSource = Join-Path $projectRoot "artifacts\realesrgan"
@@ -33,8 +53,8 @@ $cuganArchive = Join-Path $downloadDirectory "realcugan-ncnn-vulkan-20220728-win
 $cuganExtractRoot = Join-Path $projectRoot "artifacts\realcugan-20220728"
 $cuganSource = Join-Path $cuganExtractRoot "realcugan-ncnn-vulkan-20220728-windows"
 $licenseSource = Join-Path $projectRoot "artifacts\licenses"
-$releaseArchive = Join-Path $projectRoot "dist\Reforge-Pixels-windows-x64.zip"
-$sourceArchive = Join-Path $projectRoot "dist\Reforge-Pixels-windows-x64-corresponding-source.zip"
+$releaseArchive = Join-Path $distributionRoot "Reforge-Pixels-windows-x64.zip"
+$sourceArchive = Join-Path $distributionRoot "Reforge-Pixels-windows-x64-corresponding-source.zip"
 $appIcon = Join-Path $projectRoot "src\reforge_pixels\resources\app-icon.ico"
 if (-not (Test-Path -LiteralPath $appIcon -PathType Leaf)) {
     throw "Application icon is missing: $appIcon"
