@@ -102,6 +102,8 @@ foreach ($name in $requiredSources) {
     if (-not $manifest.ContainsKey($name)) {
         throw "Corresponding-source manifest does not list: $name"
     }
+    $expectedHash = ($releaseSources | Where-Object { $_.Name -eq $name }).sha256
+    Assert-ReleaseSourcePin -Name $name -DeclaredHash $manifest[$name] -ExpectedHash $expectedHash
     $path = Join-Path $sourceRoot $name
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "Required corresponding-source archive is missing: $name"

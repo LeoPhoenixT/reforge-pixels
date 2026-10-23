@@ -13,7 +13,7 @@ cross=x86_64-w64-mingw32
 x264_commit=b35605ace3ddf7c1a5d67a2eb553f034aef41d55
 
 expected_sources=(
-  "733984395e0dbbe5c046abda2dc49a5544e7e0e1e2366bba849222ae9e3a03b1  ffmpeg-7.1.1.tar.xz"
+  "de668509caf9e35e3cd162473441fdb29538c6d96ed080292b3cf9e6fc5d558f  ffmpeg-7.1.5.tar.xz"
   "c295a2ba8a06434d4bdc5c2208f8a825285210d71d91d572329b2c51fd0d4d03  nv-codec-headers-12.2.72.0.tar.gz"
   "65c1d2f78b9f2fb20082c38cbe47c951ad5839345876e46941612ee87f9a7ce1  opus-1.5.2.tar.gz"
   "cd71a7515b0e9a012e1ac9b1f8415bebcaf6fc97d4db32286642ac4c0fbe24f9  x264-b35605ace3ddf7c1a5d67a2eb553f034aef41d55.tar.gz"
@@ -50,8 +50,8 @@ phase "Build x264 $x264_commit"
 tar -xf "$sources/x264-$x264_commit.tar.gz" -C "$work"
 (cd "$work/x264-$x264_commit" && ./configure --host="$cross" --cross-prefix="$cross-" --prefix="$prefix" --enable-static --disable-cli && make -j12 && make install)
 
-phase "Configure FFmpeg 7.1.1"
-tar -xf "$sources/ffmpeg-7.1.1.tar.xz" -C "$work"
+phase "Configure FFmpeg 7.1.5"
+tar -xf "$sources/ffmpeg-7.1.5.tar.xz" -C "$work"
 configure_args=(
   --prefix="$prefix"
   --pkg-config=pkg-config
@@ -81,18 +81,18 @@ configure_args=(
 )
 printf '%q ' "${configure_args[@]}" > /tmp/configure-command.txt
 printf '\n' >> /tmp/configure-command.txt
-(cd "$work/ffmpeg-7.1.1" && PKG_CONFIG_PATH="$prefix/lib/pkgconfig" ./configure "${configure_args[@]}")
+(cd "$work/ffmpeg-7.1.5" && PKG_CONFIG_PATH="$prefix/lib/pkgconfig" ./configure "${configure_args[@]}")
 
 phase "Compile FFmpeg and FFprobe"
-make -C "$work/ffmpeg-7.1.1" -j12 ffmpeg.exe ffprobe.exe
+make -C "$work/ffmpeg-7.1.5" -j12 ffmpeg.exe ffprobe.exe
 
 phase "Assemble deterministic outputs"
 staging=/tmp/output
 rm -rf "$staging"
 mkdir -p "$staging/bin" "$staging/licenses" "$staging/corresponding-source/sources" "$staging/corresponding-source/recipe"
-cp "$work/ffmpeg-7.1.1/ffmpeg.exe" "$work/ffmpeg-7.1.1/ffprobe.exe" "$staging/bin/"
-cp "$work/ffmpeg-7.1.1/COPYING.GPLv3" "$staging/LICENSE"
-cp "$work/ffmpeg-7.1.1/COPYING.GPLv3" "$staging/licenses/FFmpeg-COPYING.GPLv3.txt"
+cp "$work/ffmpeg-7.1.5/ffmpeg.exe" "$work/ffmpeg-7.1.5/ffprobe.exe" "$staging/bin/"
+cp "$work/ffmpeg-7.1.5/COPYING.GPLv3" "$staging/LICENSE"
+cp "$work/ffmpeg-7.1.5/COPYING.GPLv3" "$staging/licenses/FFmpeg-COPYING.GPLv3.txt"
 cp "$work/x264-$x264_commit/COPYING" "$staging/licenses/x264-COPYING.txt"
 cp "$work/opus-1.5.2/COPYING" "$staging/licenses/Opus-COPYING.txt"
 cp "$work/zimg-release-3.0.5/COPYING" "$staging/licenses/zimg-COPYING.txt"
@@ -104,7 +104,7 @@ cp /tmp/configure-command.txt "$staging/configure-command.txt"
 cp /recipe/toolchain-packages.txt "$staging/toolchain-packages.txt"
 {
   echo "Reforge Pixels minimal FFmpeg Windows build"
-  echo "FFmpeg: 7.1.1 with x264, Opus, zimg, zlib, and nv-codec-headers"
+  echo "FFmpeg: 7.1.5 with x264, Opus, zimg, zlib, and nv-codec-headers"
   echo "Source date epoch: $SOURCE_DATE_EPOCH"
   echo "Builder base: ubuntu@sha256:561618e2c15bf2397621dd04f96926663a3b5616c189cf7e38db7e82f5c538ea"
   echo "Ubuntu snapshot: 20260801T000000Z"
@@ -120,7 +120,7 @@ cp /recipe/Dockerfile /recipe/build.sh /recipe/toolchain-packages.txt /tmp/confi
 cp -r "$staging/licenses" "$staging/corresponding-source/"
 find "$staging/corresponding-source" -exec touch -h -d "@$SOURCE_DATE_EPOCH" {} +
 tar --sort=name --mtime="@$SOURCE_DATE_EPOCH" --owner=0 --group=0 --numeric-owner \
-  -C "$staging/corresponding-source" -cJf "$staging/ffmpeg-7.1.1-minimal-build-corresponding-source.tar.xz" .
+  -C "$staging/corresponding-source" -cJf "$staging/ffmpeg-7.1.5-minimal-build-corresponding-source.tar.xz" .
 
 rm -rf "$out"/*
 cp -r "$staging"/* "$out/"

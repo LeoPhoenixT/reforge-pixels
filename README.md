@@ -79,11 +79,12 @@ General and Anime/Illustration categories are suggestions, not restrictions.
 
 ## Development
 
-Python 3.11 is required:
+Python 3.11 or 3.12 is supported. Use a current security patch release; portable builds enforce at least 3.11.17 or 3.12.15:
 
 ```powershell
 py -3.11 -m venv .venv
-.venv\Scripts\python -m pip install -e ".[dev]"
+.venv\Scripts\python -m pip install --require-hashes -r requirements-test.lock -r requirements-build.lock
+.venv\Scripts\python -m pip install --no-deps --no-build-isolation -e .
 .venv\Scripts\python -m pytest
 .venv\Scripts\python -m reforge_pixels.app
 ```
@@ -98,7 +99,9 @@ $env:FFMPEG_BIN_DIRECTORY = "$PWD\artifacts\minimal-ffmpeg\bin"
 .\scripts\verify_windows_release.ps1
 ```
 
-The first command uses the pinned Docker recipe in `scripts/ffmpeg-builder` to cross-compile FFmpeg 7.1.1 and its static dependencies. Toolchain installation is cached, source archives are checksum-verified, concurrent builds are blocked, and the resulting Windows binaries must pass audio, HDR, NVENC, and import-table checks. The packaging step creates paired binary and corresponding-source ZIPs and refuses to finish unless [SOURCE_CODE.md](SOURCE_CODE.md) and [CORRESPONDING_SOURCE.md](CORRESPONDING_SOURCE.md) are satisfied.
+The first command uses the pinned Docker recipe in `scripts/ffmpeg-builder` to cross-compile FFmpeg 7.1.5 and its static dependencies. Toolchain installation is cached, source archives are checksum-verified, concurrent builds are blocked, and the resulting Windows binaries must pass audio, HDR, NVENC, and import-table checks. The packaging step creates paired binary and corresponding-source ZIPs and refuses to finish unless [SOURCE_CODE.md](SOURCE_CODE.md) and [CORRESPONDING_SOURCE.md](CORRESPONDING_SOURCE.md) are satisfied.
+
+For development, place the verified `ffmpeg.exe` and `ffprobe.exe` in `runtime/tools/windows`, or prepend the verified build's `bin` directory to your process `PATH`. Development otherwise falls back to the system tools, whose version and provenance you must check. Portable builds use only their bundled tools. User media inputs are restricted to local `file`/`pipe` protocols; network playlists and encrypted playlist protocols are not supported.
 
 For a public release, upload both locally built ZIPs to a draft GitHub release whose tag points to the current `main` commit. Run the **Verify and publish portable release** workflow from `main` with that tag. CI independently checks both archives and publishes the draft only when every gate passes. Do not commit release ZIPs to the repository.
 

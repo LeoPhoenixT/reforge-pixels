@@ -120,7 +120,8 @@ def build_final_mux_command(
     included = tuple(action for action in actions if action.kind not in {"remove", "block"})
     command = [
         str(ffmpeg_path), "-hide_banner", "-loglevel", "error", "-y",
-        "-i", str(joined_video), "-i", str(source_media.path),
+        "-protocol_whitelist", "file,pipe", "-i", str(joined_video.resolve()),
+        "-protocol_whitelist", "file,pipe", "-i", str(source_media.path.resolve()),
         "-map", "0:v:0",
     ]
     for action in included:
@@ -295,7 +296,7 @@ def preflight_audio_actions(
         try:
             _run([
                 str(ffmpeg_path), "-hide_banner", "-loglevel", "error", "-y",
-                "-i", str(source_media.path), "-map", f"0:{action.stream.index}",
+                "-protocol_whitelist", "file,pipe", "-i", str(source_media.path.resolve()), "-map", f"0:{action.stream.index}",
                 "-frames:a", "1", "-c:a", "copy", "-vn", "-sn", "-dn",
                 "-map_metadata", "-1", "-f", muxer, str(probe_output),
             ], f"Audio compatibility check for {action.stream.codec.upper()}", cancelled)
@@ -354,7 +355,7 @@ def process_cfr_video(
         try:
             _run([
                 str(ffmpeg_executable), "-hide_banner", "-loglevel", "error", "-y",
-                "-i", str(media.path), "-map", "0:v:0", "-frames:v", "1",
+                "-protocol_whitelist", "file,pipe", "-i", str(media.path.resolve()), "-map", "0:v:0", "-frames:v", "1",
                 "-vf", conversion_filter, "-f", "null", "-",
             ], "HDR-to-SDR compatibility check", cancelled)
         except VideoProcessingError as error:
@@ -426,7 +427,7 @@ def process_cfr_video(
             decode_filter = ["-vf", conversion_filter] if conversion_filter else []
             _run([
                 str(ffmpeg_executable), "-hide_banner", "-loglevel", "error", "-y",
-                "-i", str(media.path), "-ss", f"{start_seconds:.12g}",
+                "-protocol_whitelist", "file,pipe", "-i", str(media.path.resolve()), "-ss", f"{start_seconds:.12g}",
                 "-map", "0:v:0", "-frames:v", str(frames_this_chunk),
                 "-fps_mode", "passthrough", *decode_filter, str(source_frames / "frame_%08d.png"),
             ], "Video decoding", cancelled)

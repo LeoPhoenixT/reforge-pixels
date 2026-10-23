@@ -1,0 +1,2 @@
+include scripts/verify_build_environment.py
+include scripts/release-sources.ps1

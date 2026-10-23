@@ -35,20 +35,20 @@ The portable release includes the official executable and the SE and Pro native-
 
 ## FFmpeg
 
-- Component: self-built FFmpeg 7.1.1 static Windows executables
+- Component: self-built FFmpeg 7.1.5 static Windows executables
 - Upstream: <https://ffmpeg.org/>
 - Static components: x264 commit `b35605ace3ddf7c1a5d67a2eb553f034aef41d55`, Opus 1.5.2, zimg 3.0.5, zlib 1.3.2, and nv-codec-headers 12.2.72.0
 - Effective license: GPLv3, because the pinned configuration enables GPL/version-3 terms and x264
-- `ffmpeg.exe` SHA-256: `195fd3debe8c83989e0ab6af20a7ad07cbb54fbb3f74ce92415911ca86b7a656`
-- `ffprobe.exe` SHA-256: `2538bd671c99bc671d614077b7dea222c73d66c8fb8a6e13e1d1c771f8c7f409`
-- Corresponding-source archive SHA-256: `456349722e877eb280c795584f0be4c8cba11c83147cbe31bef194a1abaeabf0`
+- `ffmpeg.exe` SHA-256: `6f8716b2c0d28b031522c0e005ce87769bf5dceb86a566e5437d030406d6b013`
+- `ffprobe.exe` SHA-256: `9eab48a09285732b780d7e801367b7161563be96e62147f194e572ed81464df5`
+- Corresponding-source archive SHA-256: `b7827801a963b7ea7879cb8bc21f4536d7152755650146724a0607009740eb12`
 - GPLv3 license-text SHA-256: `8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903`
 
 The builder pins the Ubuntu base-image digest and snapshot date, verifies every source archive, records the exact toolchain packages and configure command, and emits the paired corresponding-source archive. The binary ZIP includes the FFmpeg, x264, Opus, zimg, zlib, and NVIDIA header notices.
 
 ## CPython
 
-- Component: CPython 3.11 runtime embedded by Nuitka
+- Component: CPython 3.11/3.12 runtime embedded by Nuitka
 - Upstream: <https://www.python.org/>
 - License: Python Software Foundation License Version 2 and bundled notices
 
@@ -56,11 +56,11 @@ The portable package includes the installed CPython license text.
 
 ## Qt for Python / PySide6
 
-- Components: PySide6, PySide6 Essentials, PySide6 Addons, and Shiboken6 6.10.3
+- Components: PySide6, PySide6 Essentials, PySide6 Addons, and Shiboken6 6.12.0
 - Upstream: <https://doc.qt.io/qtforpython-6/>
 - License choice for this GPL application: GPLv3; the upstream packages also offer LGPLv3/commercial alternatives
 
-Only modules included by the standalone build are redistributed. The portable release includes the GPLv3 text and is paired with the exact Qt Base, PySide6, and Shiboken 6.10.3 corresponding-source archive described in `CORRESPONDING_SOURCE.md`.
+Only modules included by the standalone build are redistributed. The portable release includes the GPLv3 text and is paired with the exact Qt Base, PySide6, and Shiboken 6.12.0 corresponding-source archive described in `CORRESPONDING_SOURCE.md`.
 
 ## NCNN
 
@@ -80,8 +80,8 @@ Nuitka is not presented as an end-user runtime dependency. The exact final binar
 
 ## Pillow and pillow-heif
 
-- Components: Pillow 12.3.0 and pillow-heif 1.1.1
+- Components: Pillow 13.0.0 and pillow-heif 1.8.1
 - Upstreams: <https://python-pillow.github.io/> and <https://github.com/bigcat88/pillow_heif>
 - Purpose: authoritative still-image metadata, orientation handling, HEIC/HEIF/AVIF decoding, tiling, and final image encoding
 
-The pillow-heif binary wheel identifies bundled libheif 1.18.1 (LGPLv3), libde265 1.0.15 (LGPLv3), x265 Release 3.4 (GPLv2 or later), and libaom 3.6.1 (BSD 3-Clause). Their applicable notices are included, and the public binary must be paired with the exact source archives listed in `CORRESPONDING_SOURCE.md`.
+The pillow-heif binary wheel identifies bundled libheif 1.23.6 (LGPLv3), libde265 1.1.3 (LGPLv3), x265 4.3 (GPLv2 or later). Their applicable notices are included, and the public binary must be paired with the exact source archives listed in `CORRESPONDING_SOURCE.md`.

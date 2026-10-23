@@ -23,5 +23,8 @@ def find_tool(name: str) -> Path | None:
     bundled = application_root() / "runtime" / "tools" / platform_name() / executable_name
     if bundled.is_file():
         return bundled
+    # Portable installs must not execute a PATH substitute for a missing tool.
+    if getattr(sys, "frozen", False) or "__compiled__" in globals():
+        return None
     system = shutil.which(executable_name)
     return Path(system) if system else None
