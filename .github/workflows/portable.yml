@@ -21,7 +21,7 @@ jobs:
           if ("${{ github.ref }}" -ne "refs/heads/main") {
             throw "Run this workflow from main"
           }
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Validate draft target and assets
