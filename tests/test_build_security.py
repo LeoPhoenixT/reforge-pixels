@@ -1,8 +1,10 @@
 from pathlib import Path
 import importlib.util
 import hashlib
+import re
 import shutil
 import subprocess
+import tomllib
 
 import pytest
 
@@ -13,6 +15,29 @@ spec = importlib.util.spec_from_file_location(
 assert spec and spec.loader
 build_environment = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(build_environment)
+
+
+def test_dependency_locks_match_declared_versions():
+    root = Path(__file__).resolve().parents[1]
+    project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    test_requirements = project["project"]["dependencies"] + project["project"]["optional-dependencies"]["dev"]
+    build_requirements = project["build-system"]["requires"]
+    declared_build = (root / "requirements-build.in").read_text(encoding="utf-8")
+
+    def pins(text):
+        return {
+            re.sub(r"[-_.]+", "-", name).lower(): version
+            for name, version in re.findall(r"^([\w.-]+)==([^\s\\]+)", text, re.MULTILINE)
+        }
+
+    for requirements, lock_name in (
+        ("\n".join(test_requirements), "requirements-test.lock"),
+        ("\n".join(build_requirements), "requirements-build.lock"),
+        (declared_build, "requirements-build.lock"),
+    ):
+        locked = pins((root / lock_name).read_text(encoding="utf-8"))
+        for name, version in pins(requirements).items():
+            assert locked.get(name) == version, f"{lock_name}: {name} must be locked to {version}"
 
 
 @pytest.mark.parametrize("version", [(3, 11, 5), (3, 11, 16), (3, 12, 13), (3, 12, 14), (3, 13, 0)])
