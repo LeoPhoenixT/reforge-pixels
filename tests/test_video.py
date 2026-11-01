@@ -65,6 +65,20 @@ def test_low_disk_is_rejected_before_processing(monkeypatch: pytest.MonkeyPatch,
         )
 
 
+def test_video_entry_rejects_oversized_ai_canvas_before_ffmpeg(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    model = next(item for item in load_models() if item.id == "general-quality-4x")
+    media = replace(_media(), resolution=Resolution(5_000, 5_000), raw_width=5_000, raw_height=5_000)
+    monkeypatch.setattr("reforge_pixels.video._run", lambda *args, **kwargs: pytest.fail("FFmpeg started"))
+    with pytest.raises(VideoProcessingError, match="maximum dimension"):
+        process_cfr_video(
+            media, EnginePaths(tmp_path / "engine.exe", tmp_path), model, 2,
+            tmp_path / "output.mp4",
+        )
+    assert not (tmp_path / "output.mp4").exists()
+
+
 def test_final_mux_command_maps_stream_and_transcodes_opus_for_mp4() -> None:
     stream = AudioStreamInfo(
         index=3, codec="opus", channels=2, channel_layout="stereo", sample_rate=48000,
