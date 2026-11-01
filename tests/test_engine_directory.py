@@ -42,6 +42,7 @@ def test_directory_runner_drains_large_child_output(tmp_path: Path, monkeypatch:
     monkeypatch.setattr("reforge_pixels.engine.subprocess.Popen", verbose_child)
     source = tmp_path / "source"
     source.mkdir()
+    (source / "frame.png").write_bytes(b"png")
 
     run_directory_upscale(_paths(tmp_path), _model(), source, output, 2)
 
@@ -63,3 +64,26 @@ def test_directory_runner_reports_tail_of_merged_output(tmp_path: Path, monkeypa
 
     with pytest.raises(EngineError, match="tail marker"):
         run_directory_upscale(_paths(tmp_path), _model(), source, tmp_path / "output", 2)
+
+
+@pytest.mark.parametrize("missing", ["frame_00000002.png", "frame_00000003.png"])
+def test_directory_runner_rejects_missing_frames(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, missing: str,
+) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    names = [f"frame_{index:08d}.png" for index in range(1, 4)]
+    for name in names:
+        (source / name).write_bytes(b"png")
+    output = tmp_path / "output"
+    monkeypatch.setattr("reforge_pixels.engine.subprocess.Popen", lambda *args, **kwargs: object())
+
+    def fake_drain(*args: object, **kwargs: object) -> tuple[int, list[str], bool]:
+        for name in names:
+            if name != missing:
+                (output / name).write_bytes(b"png")
+        return 0, [], False
+
+    monkeypatch.setattr("reforge_pixels.engine.drain_process", fake_drain)
+    with pytest.raises(EngineError, match=missing):
+        run_directory_upscale(_paths(tmp_path), _model(), source, output, 2)

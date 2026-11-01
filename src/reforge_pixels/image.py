@@ -9,7 +9,7 @@ from typing import Callable, Iterator
 from PIL import Image, ImageOps
 from pillow_heif import register_heif_opener
 
-from reforge_pixels.engine import EngineError, EnginePaths, ProcessingCancelled, run_image_upscale
+from reforge_pixels.engine import EngineError, EnginePaths, ProcessingCancelled, model_verification_scope, run_image_upscale
 from reforge_pixels.models import ModelDefinition, ScaleRecipe
 from reforge_pixels.media import STILL_IMAGE_FORMATS, image_bit_depth
 
@@ -56,6 +56,7 @@ def tile_boxes(width: int, height: int, tile_size: int = DEFAULT_TILE_SIZE, over
             yield expanded, (left, top, right, bottom)
 
 
+@model_verification_scope()
 def run_safe_image_upscale(
     paths: EnginePaths,
     model: ModelDefinition,

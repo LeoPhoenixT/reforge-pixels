@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import re
 from typing import Literal
 
-from reforge_pixels.media import MediaInfo
+from reforge_pixels.media import MediaInfo, is_high_bit_pixel_format
 
 
 HdrMode = Literal["convert-sdr", "block"]
@@ -47,10 +46,6 @@ def hdr_filter(media: MediaInfo, mode: HdrMode) -> str | None:
     if media.hdr_kind == "high-bit-depth" and media.color_transfer not in {"smpte2084", "arib-std-b67"}:
         return HIGH_BIT_SDR_FILTER
     return HDR_TO_SDR_FILTER
-
-
-def is_high_bit_pixel_format(pixel_format: str | None) -> bool:
-    return bool(re.search(r"p(?:10|12|14|16)(?:le|be)?$", str(pixel_format or "").lower()))
 
 
 def verify_sdr_output(output: MediaInfo) -> None:

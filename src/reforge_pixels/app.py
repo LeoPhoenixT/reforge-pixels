@@ -8,7 +8,7 @@ import argparse
 from importlib.resources import files
 from pathlib import Path
 
-from PySide6.QtCore import QThread, Qt, Signal, QTimer
+from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtGui import QCloseEvent, QDragEnterEvent, QDropEvent, QIcon
 from PySide6.QtWidgets import (
     QApplication,
@@ -31,97 +31,23 @@ from reforge_pixels.audio import AudioMode, audio_blocking_reasons, resolve_audi
 from reforge_pixels.hdr import HdrMode, hdr_blocking_reasons, hdr_label
 from reforge_pixels.media import MediaInfo, MediaInspectionError, inspect_media
 from reforge_pixels.engine import EngineError, default_output_path, locate_engine
-from reforge_pixels.image import run_safe_image_upscale, validate_recipe_size
+from reforge_pixels.image import validate_recipe_size
 from reforge_pixels.models import ModelDefinition, ScaleRecipe, compatible_models, load_models
 from reforge_pixels.resolution import resolution_summary
-from reforge_pixels.video import VideoProcessingError, process_cfr_video
 from reforge_pixels.self_test import run_self_test
+from reforge_pixels.workers import ProcessingRequest, UpscaleThread
+from reforge_pixels.workers import InspectionThread as _InspectionThread
 
 
 def application_icon() -> QIcon:
     return QIcon(str(files("reforge_pixels").joinpath("resources/app-icon.png")))
 
 
-class InspectionThread(QThread):
-    succeeded = Signal(object)
-    failed = Signal(str)
+class InspectionThread(_InspectionThread):
+    """Keep the UI inspection hook available to existing callers."""
 
     def __init__(self, path: Path, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.path = path
-        self._cancel_requested = False
-
-    def cancel(self) -> None:
-        self._cancel_requested = True
-
-    def run(self) -> None:
-        try:
-            media = inspect_media(self.path, cancelled=lambda: self._cancel_requested)
-            if not self._cancel_requested:
-                self.succeeded.emit(media)
-        except MediaInspectionError as error:
-            if not self._cancel_requested:
-                self.failed.emit(str(error))
-
-
-class UpscaleThread(QThread):
-    progressed = Signal(int)
-    stage_changed = Signal(str)
-    completed = Signal(str)
-    failed = Signal(str)
-
-    def __init__(self, media: MediaInfo, model: ModelDefinition, recipe: ScaleRecipe, output: Path,
-                 noise_level: int | None, tta: bool, output_quality: int, webp_lossless: bool,
-                 audio_mode: AudioMode, hdr_mode: HdrMode,
-                 parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.media = media
-        self.model = model
-        self.recipe = recipe
-        self.output = output
-        self.noise_level = noise_level
-        self.tta = tta
-        self.output_quality = output_quality
-        self.webp_lossless = webp_lossless
-        self.audio_mode = audio_mode
-        self.hdr_mode = hdr_mode
-        self._cancel_requested = False
-
-    def cancel(self) -> None:
-        self._cancel_requested = True
-
-    def run(self) -> None:
-        paths = locate_engine(self.model)
-        if not paths:
-            self.failed.emit(f"The bundled {self.model.engine_id} engine or model directory was not found.")
-            return
-        try:
-            if self.media.media_type == "image":
-                run_safe_image_upscale(
-                    paths, self.model, self.media.path, self.output, self.recipe.final_scale,
-                    self.progressed.emit, cancelled=lambda: self._cancel_requested,
-                    noise_level=self.noise_level, tta=self.tta,
-                    recipe=self.recipe, output_quality=self.output_quality,
-                    webp_lossless=self.webp_lossless,
-                )
-            else:
-                process_cfr_video(
-                    self.media,
-                    paths,
-                    self.model,
-                    self.recipe.final_scale,
-                    self.output,
-                    progress=lambda stage, value: (self.stage_changed.emit(stage), self.progressed.emit(value)),
-                    cancelled=lambda: self._cancel_requested,
-                    noise_level=self.noise_level,
-                    tta=self.tta,
-                    recipe=self.recipe,
-                    audio_mode=self.audio_mode,
-                    hdr_mode=self.hdr_mode,
-                )
-            self.completed.emit(str(self.output))
-        except (EngineError, VideoProcessingError, OSError, ValueError) as error:
-            self.failed.emit(str(error))
+        super().__init__(path, parent, inspector=inspect_media)
 
 
 class DropPanel(QFrame):
@@ -686,18 +612,21 @@ class MainWindow(QMainWindow):
         self.progress_bar.setValue(0)
         self.progress_bar.setVisible(True)
         self.status_label.setText(f"Upscaling {self._media.media_type} on the GPU…")
-        self._upscale = UpscaleThread(
-            self._media, model, recipe, output_path, noise_level,
-            self.tta_checkbox.isChecked(), self.quality_spin.value(),
-            self.webp_lossless_checkbox.isChecked(), self._selected_audio_mode(),
-            self._selected_hdr_mode(), self,
+        request = ProcessingRequest(
+            media=self._media, model=model, recipe=recipe, output=output_path,
+            noise_level=noise_level, tta=self.tta_checkbox.isChecked(),
+            output_quality=self.quality_spin.value(),
+            webp_lossless=self.webp_lossless_checkbox.isChecked(),
+            audio_mode=self._selected_audio_mode(), hdr_mode=self._selected_hdr_mode(),
         )
+        self._upscale = UpscaleThread(request, self)
         self._progress_started = time.monotonic()
         self._current_stage = "Upscaling"
         self._upscale.progressed.connect(self._on_progress)
         self._upscale.stage_changed.connect(self._on_stage_changed)
         self._upscale.completed.connect(self._upscale_completed)
         self._upscale.failed.connect(self._upscale_failed)
+        self._upscale.cancelled.connect(self._upscale_cancelled)
         self._upscale.finished.connect(self._upscale_finished)
         self._upscale.start()
 
@@ -757,12 +686,17 @@ class MainWindow(QMainWindow):
             return
         self.cancel_button.setVisible(False)
         self.cancel_button.setEnabled(True)
-        if message == "Processing was cancelled":
-            self.progress_bar.setVisible(False)
-            self.status_label.setText("Cancelled")
-        else:
-            self.status_label.setText("Upscaling failed")
-            QMessageBox.critical(self, "Upscaling failed", message)
+        self.status_label.setText("Upscaling failed")
+        QMessageBox.critical(self, "Upscaling failed", message)
+        self._update_resolution()
+
+    def _upscale_cancelled(self) -> None:
+        if self._closing:
+            return
+        self.cancel_button.setVisible(False)
+        self.cancel_button.setEnabled(True)
+        self.progress_bar.setVisible(False)
+        self.status_label.setText("Cancelled")
         self._update_resolution()
 
     def _upscale_finished(self) -> None:

@@ -71,6 +71,13 @@ class MediaInfo:
     frame_count: int | None = None
     discarded_streams: tuple[str, ...] = ()
 
+    def __post_init__(self) -> None:
+        # ffprobe's detailed streams are authoritative; retain legacy summary-only
+        # construction for callers that do not yet supply audio_details.
+        if self.audio_details:
+            object.__setattr__(self, "audio_streams", len(self.audio_details))
+            object.__setattr__(self, "audio_codecs", tuple(stream.codec for stream in self.audio_details))
+
     @property
     def blocking_reasons(self) -> tuple[str, ...]:
         reasons: list[str] = []
@@ -107,8 +114,11 @@ def _rotation(stream: dict[str, Any]) -> int:
     return 0
 
 
-def _is_high_bit_depth(pixel_format: str | None) -> bool:
+def is_high_bit_pixel_format(pixel_format: str | None) -> bool:
     return bool(re.search(r"p(?:10|12|14|16)(?:le|be)?$", str(pixel_format or "").lower()))
+
+
+_is_high_bit_depth = is_high_bit_pixel_format
 
 
 def _hdr_side_data(stream: dict[str, Any]) -> tuple[str, ...]:

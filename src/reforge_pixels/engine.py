@@ -6,6 +6,8 @@ import hashlib
 import os
 import re
 import subprocess
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -22,6 +24,21 @@ class EngineError(RuntimeError):
 
 class ProcessingCancelled(EngineError):
     pass
+
+
+_verified_assets: ContextVar[set[tuple[Path, str, str]] | None] = ContextVar(
+    "verified_model_assets", default=None,
+)
+
+
+@contextmanager
+def model_verification_scope():
+    """Reuse successful checksum checks during one processing request only."""
+    token = _verified_assets.set(set())
+    try:
+        yield
+    finally:
+        _verified_assets.reset(token)
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,12 +93,18 @@ def _sha256(path: Path) -> str:
 
 
 def verify_model(model: ModelDefinition, models_directory: Path) -> None:
+    verified = _verified_assets.get()
     for asset in model.model_files:
         path = models_directory / asset.name
         if not path.is_file():
             raise EngineError(f"Required model file is missing: {asset.name}")
+        key = (path.resolve(), asset.name, asset.sha256)
+        if verified is not None and key in verified:
+            continue
         if _sha256(path) != asset.sha256:
             raise EngineError(f"Model file checksum does not match: {asset.name}")
+        if verified is not None:
+            verified.add(key)
 
 
 def default_output_path(input_path: Path, scale: int, extension: str = ".png") -> Path:
@@ -256,7 +279,16 @@ def run_directory_upscale(
             f"Frame upscaling failed with exit code {return_code}.\n"
             + "\n".join(output_lines[-10:])
         )
-    if not any(output_directory.glob("*.png")):
+    input_frames = {path.name for path in input_directory.glob("*.png")}
+    output_frames = {path.name for path in output_directory.glob("*.png")}
+    if not output_frames:
         raise EngineError("Frame upscaling produced no output images")
+    if input_frames != output_frames:
+        missing = sorted(input_frames - output_frames)
+        unexpected = sorted(output_frames - input_frames)
+        raise EngineError(
+            "Frame upscaling output does not match input frames: "
+            f"missing={missing[:5]}, unexpected={unexpected[:5]}"
+        )
     if progress:
         progress(100)
