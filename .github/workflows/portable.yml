@@ -21,7 +21,7 @@ jobs:
           if ("${{ github.ref }}" -ne "refs/heads/main") {
             throw "Run this workflow from main"
           }
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: Validate draft target and assets
@@ -37,12 +37,27 @@ jobs:
             "Reforge-Pixels-windows-x64-corresponding-source.zip"
           )
           $assetNames = @($release.assets | ForEach-Object { $_.name })
+          if ($assetNames.Count -ne $expectedAssets.Count) {
+            throw "Draft release must contain exactly the two required assets"
+          }
           foreach ($name in $expectedAssets) {
             if ($name -notin $assetNames) { throw "Draft release is missing required asset: $name" }
           }
           $mainCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $mainCommit -ne "${{ github.sha }}") {
+            throw "Checked-out commit does not match the workflow commit"
+          }
           if ($release.targetCommitish -ne "main" -and $release.targetCommitish -ne $mainCommit) {
             throw "Draft release must target main or the current main commit"
+          }
+          $tagRef = "refs/tags/$env:RELEASE_TAG"
+          git check-ref-format $tagRef
+          if ($LASTEXITCODE -ne 0) { throw "Invalid release tag" }
+          git fetch --no-tags origin $tagRef
+          if ($LASTEXITCODE -ne 0) { throw "Release tag does not exist on origin" }
+          $tagCommit = (git rev-parse "FETCH_HEAD^{commit}").Trim()
+          if ($LASTEXITCODE -ne 0 -or $tagCommit -ne $mainCommit) {
+            throw "Release tag must point to the verified main commit"
           }
       - name: Download and extract paired assets
         shell: pwsh
@@ -72,5 +87,27 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
+          $release = gh release view $env:RELEASE_TAG --json isDraft,assets | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0 -or -not $release.isDraft) {
+            throw "Verified release must still be a draft"
+          }
+          $expectedAssets = @(
+            "Reforge-Pixels-windows-x64.zip",
+            "Reforge-Pixels-windows-x64-corresponding-source.zip"
+          )
+          $assetNames = @($release.assets | ForEach-Object { $_.name })
+          if ($assetNames.Count -ne $expectedAssets.Count) {
+            throw "Draft release assets changed since verification"
+          }
+          foreach ($name in $expectedAssets) {
+            if ($name -notin $assetNames) { throw "Draft release assets changed since verification" }
+          }
+          $tagRef = "refs/tags/$env:RELEASE_TAG"
+          git fetch --no-tags origin $tagRef
+          if ($LASTEXITCODE -ne 0) { throw "Unable to recheck release tag" }
+          $tagCommit = (git rev-parse "FETCH_HEAD^{commit}").Trim()
+          if ($LASTEXITCODE -ne 0 -or $tagCommit -ne "${{ github.sha }}") {
+            throw "Release tag changed since verification"
+          }
           gh release edit $env:RELEASE_TAG --draft=false
           if ($LASTEXITCODE -ne 0) { throw "Unable to publish verified draft release" }
