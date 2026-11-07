@@ -8,6 +8,10 @@ on:
         required: true
         type: string
 
+concurrency:
+  group: portable-release-${{ inputs.tag }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -36,6 +40,7 @@ jobs:
             "Reforge-Pixels-windows-x64.zip",
             "Reforge-Pixels-windows-x64-corresponding-source.zip"
           )
+          if ($LASTEXITCODE -ne 0) { throw "Unable to inspect draft release" }
           $assetNames = @($release.assets | ForEach-Object { $_.name })
           if ($assetNames.Count -ne $expectedAssets.Count) {
             throw "Draft release must contain exactly the two required assets"
@@ -43,6 +48,13 @@ jobs:
           foreach ($name in $expectedAssets) {
             if ($name -notin $assetNames) { throw "Draft release is missing required asset: $name" }
           }
+          foreach ($asset in $release.assets) {
+            if (-not $asset.id -or $asset.digest -notmatch '^sha256:[0-9a-f]{64}$') {
+              throw "Draft asset has no verifiable identity or SHA-256: $($asset.name)"
+            }
+          }
+          $release.assets | Select-Object name,id,digest | ConvertTo-Json |
+            Set-Content -LiteralPath (Join-Path $env:RUNNER_TEMP 'verified-release-assets.json')
           $mainCommit = (git rev-parse HEAD).Trim()
           if ($LASTEXITCODE -ne 0 -or $mainCommit -ne "${{ github.sha }}") {
             throw "Checked-out commit does not match the workflow commit"
@@ -71,6 +83,12 @@ jobs:
             --pattern "Reforge-Pixels-windows-x64.zip" `
             --pattern "Reforge-Pixels-windows-x64-corresponding-source.zip"
           if ($LASTEXITCODE -ne 0) { throw "Unable to download draft release assets" }
+          $assets = Get-Content -Raw -LiteralPath (Join-Path $env:RUNNER_TEMP 'verified-release-assets.json') | ConvertFrom-Json
+          foreach ($asset in $assets) {
+            $file = Join-Path 'ci-release/assets' $asset.name
+            $digest = 'sha256:' + (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($digest -ne $asset.digest) { throw "Downloaded asset digest mismatch: $($asset.name)" }
+          }
           Expand-Archive ci-release/assets/Reforge-Pixels-windows-x64.zip -DestinationPath ci-release/binary
           Expand-Archive ci-release/assets/Reforge-Pixels-windows-x64-corresponding-source.zip -DestinationPath ci-release/source
       - name: Verify binary integrity and release compliance
@@ -91,16 +109,13 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or -not $release.isDraft) {
             throw "Verified release must still be a draft"
           }
-          $expectedAssets = @(
-            "Reforge-Pixels-windows-x64.zip",
-            "Reforge-Pixels-windows-x64-corresponding-source.zip"
-          )
-          $assetNames = @($release.assets | ForEach-Object { $_.name })
-          if ($assetNames.Count -ne $expectedAssets.Count) {
-            throw "Draft release assets changed since verification"
-          }
-          foreach ($name in $expectedAssets) {
-            if ($name -notin $assetNames) { throw "Draft release assets changed since verification" }
+          $assets = Get-Content -Raw -LiteralPath (Join-Path $env:RUNNER_TEMP 'verified-release-assets.json') | ConvertFrom-Json
+          if (@($release.assets).Count -ne @($assets).Count) { throw "Draft release assets changed since verification" }
+          foreach ($asset in $assets) {
+            $matchingAssets = @($release.assets | Where-Object {
+              $_.name -ceq $asset.name -and $_.id -ceq $asset.id -and $_.digest -ceq $asset.digest
+            })
+            if ($matchingAssets.Count -ne 1) { throw "Draft asset changed since verification: $($asset.name)" }
           }
           $tagRef = "refs/tags/$env:RELEASE_TAG"
           git fetch --no-tags origin $tagRef
